@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s - Aether WebSDR",
-    default: "Aether WebSDR",
+    template: "%s - Aether Account",
+    default: "Aether Account | Your Cloud Hub for Aether Services",
   },
   description:
-    "Aether Mail - A lightweight, open-source email client built for privacy, speed, and seamless integration within the Aether Office ecosystem.",
+    "Aether Account - Your cloud hub to securely manage all Aether services, profiles, and preferences in one unified dashboard. Fully open-source, fully cloud.",
 };
 
 export default function AuthLayout({

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Header } from "./_components/Header";
 import { Sidebar } from "./_components/Sidebar";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+// import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 export const metadata: Metadata = {
-  title: "Aether Mail | The Ultimate Email Client for Aether Office",
+  title: "Aether Account | Your Cloud Hub for Aether Services",
   description:
-    "Aether Mail - A lightweight, open-source email client built for privacy, speed, and seamless integration within the Aether Office ecosystem.",
+    "Aether Account - Your cloud hub to securely manage all Aether services, profiles, and preferences in one unified dashboard. Fully open-source, fully cloud.",
 };
 
 export default function PlatformLayout({
@@ -15,7 +15,6 @@ export default function PlatformLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ProtectedRoute>
       <div className="flex flex-col h-screen">
         <Header />
         <div className="flex flex-1 overflow-hidden">
@@ -23,6 +22,5 @@ export default function PlatformLayout({
           <div className="flex-1 overflow-auto">{children}</div>
         </div>
       </div>
-    </ProtectedRoute>
   );
 }

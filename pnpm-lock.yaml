@@ -11,6 +11,9 @@ importers:
       '@capacitor/core':
         specifier: ^8.2.0
         version: 8.2.0
+      '@fontsource-variable/mona-sans':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@loglayer/transport-pino':
         specifier: ^3.0.2
         version: 3.0.2(pino@10.3.1)
@@ -757,6 +760,10 @@ packages:
 
   /@floating-ui/utils@0.2.11:
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+    dev: false
+
+  /@fontsource-variable/mona-sans@5.2.8:
+    resolution: {integrity: sha512-8OWdTcP8KvRxkU1Skkk+tX3D5XHN9buejxSDwrT7teRfGnpKBYxQUApV/+zS8TzeHiSU8H5Tc0HfBr57ahgcvA==}
     dev: false
 
   /@hono/node-server@1.19.9(hono@4.11.4):

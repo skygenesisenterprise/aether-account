@@ -1,7 +1,7 @@
 {
-  "name": "aether-mail",
+  "name": "aether-account",
   "version": "1.0.0",
-  "description": "Aether Mail is a lightweight, open-source email client built for privacy, speed, and seamless integration within the Aether Office ecosystem",
+  "description": "Aether Account is a lightweight, open-source account management client built for privacy, speed, and seamless integration within the Aether Office ecosystem",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -106,6 +106,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.2.0",
+    "@fontsource-variable/mona-sans": "^5.2.8",
     "@loglayer/transport-pino": "^3.0.2",
     "@prisma/client": "^7.4.2",
     "@radix-ui/react-slot": "^1.2.4",

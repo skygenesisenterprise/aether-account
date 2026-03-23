@@ -10,7 +10,7 @@ export default function LoginPage() {
   return (
     <>
       <h1 className="text-2xl font-light text-foreground text-balance text-center">
-        Sign in to Aether WebSDR
+        Sign in to Aether Account
       </h1>
       <LoginForm />
       <PasskeyOption />

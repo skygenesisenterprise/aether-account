@@ -1,7 +1,7 @@
 {
-  "name": "@aether-mail/app",
+  "name": "@aether-account/app",
   "version": "1.0.0",
-  "description": "Frontend application for Aether Mail",
+  "description": "Frontend application for Aether Account",
   "private": true,
   "type": "module",
   "scripts": {
