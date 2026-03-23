@@ -27,7 +27,7 @@ export default function HomePage() {
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Rechercher dans le compte Google"
+              placeholder="Rechercher dans le compte Office"
               className="w-full rounded-md border border-border bg-input py-2 pl-10 pr-4 text-sm font-sans text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
