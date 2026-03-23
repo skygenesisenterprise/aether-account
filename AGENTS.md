@@ -1,15 +1,26 @@
-# Agent Guidelines for Account Platform
+# Agent Guidelines
 
 ## Build Commands
-- Frontend: `npm run dev`, `npm run build`, `npm run lint`
-- API: `cargo build`, `cargo run`, `cargo test`
-- Single test: `cargo test <test_name>`
+
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm lint` - Run ESLint
+- `pnpm start` - Start production server
 
 ## Code Style
-- TypeScript: Strict mode enabled, use `@/*` path aliases
-- React: Use functional components with TypeScript types
-- Rust: 2024 edition, standard formatting
-- ESLint: Next.js config with TypeScript rules
-- Tailwind CSS for styling
-- Import order: React/Next.js imports first, then third-party, then local imports
-- Error handling: Use TypeScript strict types, proper error boundaries in React
+
+- Use TypeScript with strict mode enabled
+- Import React components with: `import * as React from "react"`
+- Use `@/*` path aliases for internal imports
+- Follow Next.js App Router conventions
+- Use Tailwind CSS for styling with `cn()` utility
+- Components use PascalCase, files use kebab-case
+- Context providers end with `Provider` suffix
+- Custom hooks start with `use`
+- Error boundaries for async operations
+- Prefer interfaces over types for public APIs
+
+## API Reference
+
+- When needing to make API calls from the web client, refer to `routers/api/v1/` for the available endpoints
+- Each subdirectory contains different API categories (repo, org, user, admin, misc, etc.)
