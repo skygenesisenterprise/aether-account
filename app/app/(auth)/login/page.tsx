@@ -1,0 +1,20 @@
+import type { Metadata } from "next";
+import { LoginForm } from "@/components/login-form";
+import { PasskeyOption, CreateAccountLink } from "@/components/passkey-option";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+};
+
+export default function LoginPage() {
+  return (
+    <>
+      <h1 className="text-2xl font-light text-foreground text-balance text-center">
+        Sign in to Aether WebSDR
+      </h1>
+      <LoginForm />
+      <PasskeyOption />
+      <CreateAccountLink />
+    </>
+  );
+}
