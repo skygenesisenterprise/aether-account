@@ -14,7 +14,7 @@
     "package/snap",
     "tests",
     "messages",
-    "prisma"
+    "server/prisma"
   ],
   "scripts": {
     "dev": "concurrently \"pnpm --filter app dev\" \"pnpm --filter server dev\"",

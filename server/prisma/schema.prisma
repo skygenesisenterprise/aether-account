@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String?
+  firstName           String?
+  lastName            String?
+  password            String?
+  gender              String?
+  birthDate           DateTime?
+  phone               String?
+  avatarUrl           String?
+  language            String    @default("Français (France)")
+  aetherId            String    @unique
+  accountType         String    @default("Entreprise")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  emailVerified        DateTime?
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret     String?
+  passkeyEnabled      Boolean   @default(true)
+  secureNavigation    Boolean   @default(false)
+
+  passwords           Password[]
+  addresses           Address[]
+  recoveryEmails     RecoveryEmail[]
+  recoveryPhones     RecoveryPhone[]
+  devices             Device[]
+  sessions            Session[]
+  thirdPartyApps      ThirdPartyApp[]
+  securityActivities  SecurityActivity[]
+  passwordKeys        PasswordKey[]
+  authenticators      Authenticator[]
+}
+
+model Password {
+  id          String   @id @default(cuid())
+  name        String
+  username    String
+  password    String
+  url         String?
+  favorite    Boolean  @default(false)
+  category    String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  label     String
+  value     String
+  isPrimary Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RecoveryEmail {
+  id        String   @id @default(cuid())
+  email     String
+  isPrimary Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, userId])
+  @@index([userId])
+}
+
+model RecoveryPhone {
+  id        String   @id @default(cuid())
+  phone     String
+  isPrimary Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([phone, userId])
+  @@index([userId])
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  os          String?
+  browser     String?
+  lastSeen    DateTime @default(now())
+  isTrusted   Boolean  @default(false)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessions    Session[]
+
+  @@index([userId])
+  @@index([type])
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  token         String    @unique
+  deviceId      String?
+  device        Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([deviceId])
+}
+
+model ThirdPartyApp {
+  id          String   @id @default(cuid())
+  name        String
+  accessLevel String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([name, userId])
+  @@index([userId])
+}
+
+model SecurityActivity {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  description String?
+  device      String?
+  ipAddress   String?
+  time        DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([time])
+}
+
+model PasswordKey {
+  id          String   @id @default(cuid())
+  name        String
+  publicKey   String
+  credentialId String
+  counter     Int      @default(0)
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([credentialId])
+  @@index([userId])
+}
+
+model Authenticator {
+  id           String   @id @default(cuid())
+  name         String
+  publicKey    String
+  credentialId String
+  counter      Int      @default(0)
+  createdAt    DateTime @default(now())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([credentialId])
+  @@index([userId])
+}
