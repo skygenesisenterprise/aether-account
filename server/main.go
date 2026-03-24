@@ -2,17 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 
 	"github.com/skygenesisenterprise/aether-account/server/src/config"
-	"github.com/skygenesisenterprise/aether-account/server/src/middleware"
 	"github.com/skygenesisenterprise/aether-account/server/src/routes"
 	"github.com/skygenesisenterprise/aether-account/server/src/services"
 )
@@ -40,4 +35,26 @@ func displayBanner() {
 	fmt.Printf("\033[1;32m[✓] CPU Cores: %d\033[0m\n", runtime.NumCPU())
 	fmt.Printf("\033[1;32m[✓] Process ID: %d\033[0m\n", os.Getpid())
 	fmt.Printf("\n")
+}
+
+func main() {
+	displayBanner()
+
+	cfg := config.Load()
+
+	jwtService := services.NewJWTService(cfg.JWT.Secret, cfg.JWT.Expiry, cfg.JWT.Issuer)
+
+	router := gin.Default()
+
+	routes.SetupRoutes(router, jwtService)
+
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
+	fmt.Printf("\033[1;32m[✓] Server starting on %s\033[0m\n", addr)
+	fmt.Printf("\033[1;36m[✓] API available at http://localhost%s/api/v1\033[0m\n", addr)
+	fmt.Printf("\n")
+
+	if err := router.Run(addr); err != nil {
+		fmt.Printf("\033[1;31m[✗] Failed to start server: %v\033[0m\n", err)
+		os.Exit(1)
+	}
 }

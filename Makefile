@@ -1,6 +1,6 @@
 .PHONY: help build build-app build-server build-dev build-cloud run-app run-server run-dev run-prod stop clean prune rmi-dev dev-up dev-down
 
-APP_NAME := aether-mail
+APP_NAME := aether-account
 
 help:
 	@echo "Available targets:"
@@ -19,6 +19,9 @@ help:
 	@echo "  rmi-dev       - Remove dev image and container"
 	@echo "  dev-up        - Start dev environment (docker-compose)"
 	@echo "  dev-down      - Stop dev environment"
+	@echo "  cloud-up      - Start cloud environment (docker-compose)"
+	@echo "  cloud-down    - Stop cloud environment"
+	@echo "  cloud-logs    - View cloud environment logs"
 
 build:
 	docker build -t $(APP_NAME):latest .
@@ -68,3 +71,12 @@ dev-up:
 
 dev-down:
 	docker compose -f docker-compose.dev.yml down
+
+cloud-up:
+	docker compose -f docker-compose.cloud.yml up -d
+
+cloud-down:
+	docker compose -f docker-compose.cloud.yml down
+
+cloud-logs:
+	docker compose -f docker-compose.cloud.yml logs -f

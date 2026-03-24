@@ -1,20 +1,55 @@
-FROM node:20-alpine
+# Development Dockerfile for Aether Account
+# Usage: docker compose -f docker-compose.dev.yml up
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM node:20-alpine AS base
 
-RUN apk add --no-cache wget ca-certificates
-RUN wget -q https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go.tar && \
+# Install Go
+RUN apk add --no-cache \
+    wget \
+    ca-certificates \
+    curl \
+    git \
+    && wget -q https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go.tar && \
     tar -C /usr/local -xzf /tmp/go.tar && rm /tmp/go.tar
+
 ENV PATH="/usr/local/go/bin:${PATH}"
-RUN GOBIN=/usr/local/bin go install github.com/air-verse/air@latest
+ENV GOPATH="/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# Install tools
+RUN go install github.com/air-verse/air@latest && \
+    go install github.com/sqlc-dev/sqlc@latest && \
+    go install github.com/pressly/goose/cmd/goose@latest
+
+# Enable corepack for pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
+# Install frontend dependencies
 COPY app/package.json app/pnpm-lock.yaml* ./
 RUN pnpm install
 
-COPY app/nginx.conf /app/nginx.conf
+# Copy app source
+COPY app/ ./
 
-RUN mkdir -p /app/tmp
+# Copy server source
+COPY server/ ./
 
-EXPOSE 3001 8080
+# Copy root files
+COPY go.mod go.sum* ./
+
+# Install backend dependencies
+RUN go mod download
+
+# Create directories
+RUN mkdir -p /app/src/logs /app/tmp
+
+# Copy nginx config for reverse proxy
+COPY app/nginx.conf /etc/nginx/http.d/default.conf
+
+# Expose ports
+EXPOSE 3000 8080
+
+# Default: run both frontend dev server and backend
+CMD ["sh", "-c", "nginx && air -c .air.toml & pnpm dev & wait"]

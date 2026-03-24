@@ -1,22 +1,61 @@
+name: aether-account-dev
+
 services:
-  dev:
+  app:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    image: aether-account-dev:latest
+    container_name: aether-account-dev
+    restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3000:3000"
       - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - ENVIRONMENT=local
+      - DATABASE_URL=postgresql://aether:password@postgres:5432/aether_account
+      - JWT_SECRET=dev-secret-change-in-production
+      - SERVER_PORT=8080
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_ENVIRONMENT=local
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./app:/app
+      - ./app:/app/app
       - ./server:/app/server
-      - ./.air.toml:/app/.air.toml
       - ./go.mod:/app/go.mod
       - ./go.sum:/app/go.sum
+      - ./.air.toml:/app/.air.toml
       - ./.env:/app/.env
       - aether-node-modules:/app/node_modules
     working_dir: /app
-    command: sh -c "mkdir -p /app/tmp && pnpm dev & air -c .air.toml"
+    command: sh -c "mkdir -p /app/src/logs /app/tmp && nginx && air -c .air.toml & pnpm dev & wait"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aether-postgres-dev
     restart: unless-stopped
+    environment:
+      - POSTGRES_USER=aether
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=aether_account
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aether -d aether_account"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
+  postgres_dev_data:
   aether-node-modules:

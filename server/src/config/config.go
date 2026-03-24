@@ -40,7 +40,16 @@ type ServerConfig struct {
 	Port    int
 	Mode    string
 	Timeout time.Duration
+	URL     string
 }
+
+type Environment string
+
+const (
+	EnvLocal      Environment = "local"
+	EnvProduction Environment = "production"
+	EnvStaging    Environment = "staging"
+)
 
 type LogConfig struct {
 	Level  string
@@ -99,6 +108,7 @@ func Load() *Config {
 			Port:    getEnvInt("SERVER_PORT", 8080),
 			Mode:    getEnv("GIN_MODE", "debug"),
 			Timeout: getEnvDuration("SERVER_TIMEOUT", 30*time.Second),
+			URL:     getServerURL(),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -166,4 +176,51 @@ func getEnvSlice(key string, defaultValue []string) []string {
 		return strings.Split(value, ",")
 	}
 	return defaultValue
+}
+
+func detectEnvironment() Environment {
+	env := strings.ToLower(os.Getenv("ENVIRONMENT"))
+	switch env {
+	case "production", "prod":
+		return EnvProduction
+	case "staging":
+		return EnvStaging
+	default:
+		return EnvLocal
+	}
+}
+
+func getServerURL() string {
+	explicitURL := os.Getenv("SERVER_URL")
+	if explicitURL != "" {
+		return explicitURL
+	}
+
+	env := detectEnvironment()
+	port := getEnvInt("SERVER_PORT", 8080)
+
+	switch env {
+	case EnvProduction:
+		return "https://api.account.skygenesisenterprise.com"
+	case EnvStaging:
+		return "https://api-staging.account.skygenesisenterprise.com"
+	default:
+		return "http://localhost:" + strconv.Itoa(port)
+	}
+}
+
+func GetEnvironment() Environment {
+	return detectEnvironment()
+}
+
+func IsProduction() bool {
+	return detectEnvironment() == EnvProduction
+}
+
+func IsLocal() bool {
+	return detectEnvironment() == EnvLocal
+}
+
+func IsStaging() bool {
+	return detectEnvironment() == EnvStaging
 }

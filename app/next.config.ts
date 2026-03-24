@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "giteria.com",
+        hostname: "account.skygenesisenterprise.com",
         pathname: "/**",
       },
       {

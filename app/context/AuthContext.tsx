@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi, type TokenResponse } from "@/lib/api/auth";
+import { registerApi, forgotApi } from "@/lib/api";
 import type { User } from "@/lib/api/types";
 
 interface AuthContextType {
@@ -12,6 +13,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  register: (email: string, username: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,6 +130,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const register = async (email: string, username: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const response = await registerApi.register(email, username, password);
+
+      if (!response.success) {
+        throw new Error(response.error || "Registration failed");
+      }
+
+      router.push("/login?registered=true");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const response = await forgotApi.requestReset(email);
+
+      if (!response.success) {
+        throw new Error(response.error || "Request failed");
+      }
+
+      return response;
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -134,6 +171,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     checkAuth,
+    register,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

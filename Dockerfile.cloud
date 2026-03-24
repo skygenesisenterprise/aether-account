@@ -1,0 +1,81 @@
+# Multi-stage Dockerfile for Aether Account Cloud
+# Builds: aether-account-cloud
+
+# Stage 1: Frontend (Next.js)
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+COPY app/package.json app/pnpm-lock.yaml* ./
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY app/ ./
+RUN pnpm install --frozen-lockfile && \
+    NEXT_PUBLIC_ENVIRONMENT=production pnpm build
+
+# Stage 2: Backend (Go)
+FROM golang:1.25-alpine AS backend-builder
+
+WORKDIR /build
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY server/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -o aether-server \
+    ./server/
+
+# Generate Prisma Client (if needed)
+RUN go run github.com/prisma/prisma-client-go generate 2>/dev/null || true
+
+# Stage 3: Runtime
+FROM alpine:3.19 AS runtime
+
+LABEL maintainer="Sky Genesis Enterprise"
+LABEL description="Aether Account Cloud - Enterprise Account Management Platform"
+
+RUN apk add --no-cache \
+    nginx \
+    nodejs \
+    curl \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1000 -S aether && \
+    adduser -u 1000 -S aether -G aether
+
+WORKDIR /app
+
+# Copy frontend build
+COPY --from=frontend-builder /app/.next/standalone ./
+COPY --from=frontend-builder /app/.next/static ./.next/static/
+COPY --from=frontend-builder /app/public ./public
+COPY --from=frontend-builder /app/package.json ./
+
+# Copy backend
+COPY --from=backend-builder /build/aether-server ./
+
+# Copy nginx configuration
+COPY app/nginx.conf /etc/nginx/http.d/default.conf
+
+# Create directories for logs and runtime
+RUN mkdir -p /var/log/nginx /app/data && \
+    chown -R aether:aether /app
+
+USER aether
+
+ENV NODE_ENV=production
+ENV ENVIRONMENT=production
+ENV SERVER_PORT=8080
+
+EXPOSE 3000 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start nginx (reverse proxy) and backend server
+ENTRYPOINT ["sh", "-c", "nginx && ./aether-server"]

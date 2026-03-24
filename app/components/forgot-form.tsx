@@ -1,11 +1,30 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export function ForgotForm() {
-  const [email, setEmail] = useState("")
-  const [submitted, setSubmitted] = useState(false)
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { resetPassword } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      await resetPassword(email);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -13,7 +32,8 @@ export function ForgotForm() {
         <div className="flex flex-col gap-3">
           <div className="rounded-md border border-[#238636]/40 bg-[#238636]/10 px-3 py-2">
             <p className="text-sm text-primary">
-              Check your email for a link to reset your password. If it does not appear within a few minutes, check your spam folder.
+              Check your email for a link to reset your password. If it does not appear within a few
+              minutes, check your spam folder.
             </p>
           </div>
           <Link
@@ -24,23 +44,17 @@ export function ForgotForm() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        setSubmitted(true)
-      }}
-      className="w-full rounded-md border border-border bg-card p-4"
-    >
+    <form onSubmit={handleSubmit} className="w-full rounded-md border border-border bg-card p-4">
       <div className="flex flex-col gap-4">
+        {error && (
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        )}
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="email_field"
-            className="text-sm font-medium text-foreground"
-          >
+          <label htmlFor="email_field" className="text-sm font-medium text-foreground">
             Enter your email address and we will send you a password reset link.
           </label>
           <input
@@ -58,9 +72,10 @@ export function ForgotForm() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-[#2ea043] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
+          disabled={isLoading}
+          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-[#2ea043] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors disabled:opacity-50"
         >
-          Send password reset email
+          {isLoading ? "Sending..." : "Send password reset email"}
         </button>
 
         <div className="relative flex items-center">
@@ -69,13 +84,10 @@ export function ForgotForm() {
           <div className="flex-1 border-t border-border" />
         </div>
 
-        <Link
-          href="/register"
-          className="text-center text-sm text-[#2f81f7] hover:underline"
-        >
+        <Link href="/register" className="text-center text-sm text-[#2f81f7] hover:underline">
           Create an account
         </Link>
       </div>
     </form>
-  )
+  );
 }
