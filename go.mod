@@ -1,4 +1,4 @@
-module github.com/skygenesisenterprise/aether-websdr
+module github.com/skygenesisenterprise/aether-account
 
 go 1.25.5
 

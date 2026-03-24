@@ -21,26 +21,15 @@ const navigation: NavSection[] = [
   {
     title: "Account",
     items: [
-      { label: "Overview", href: "/home", icon: Home },
+      { label: "Home", href: "/home", icon: Home },
       { label: "Personal Info", href: "/personal", icon: User },
       { label: "Security", href: "/security", icon: Shield },
       { label: "Password Vault", href: "/password", icon: Key },
-    ],
-  },
-  {
-    title: "Ecosystem",
-    items: [
       { label: "Third-party Apps", href: "/third-party", icon: Box },
       { label: "Contacts", href: "/contacts", icon: Share2 },
+      { label: "Data Control", href: "/privacy", icon: Database },
+      { label: "Plans & Wallet", href: "/wallet", icon: Wallet }
     ],
-  },
-  {
-    title: "Data & Privacy",
-    items: [{ label: "Data Control", href: "/privacy", icon: Database }],
-  },
-  {
-    title: "Billing",
-    items: [{ label: "Plans & Wallet", href: "/wallet", icon: Wallet }],
   },
 ];
 

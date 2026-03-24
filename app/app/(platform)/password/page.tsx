@@ -20,6 +20,7 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
+import { Footer } from "../_components/Footer";
 
 interface PasswordEntry {
   id: string;
@@ -31,13 +32,6 @@ interface PasswordEntry {
   createdAt: string;
   category: string;
   notes?: string;
-}
-
-interface PasswordModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (password: Omit<PasswordEntry, "id" | "createdAt">) => void;
-  editingPassword?: PasswordEntry | null;
 }
 
 const AVATAR_COLORS = [
@@ -137,7 +131,17 @@ const CATEGORIES = [
   "Professionnel",
 ];
 
-function PasswordModal({ isOpen, onClose, onSave, editingPassword }: PasswordModalProps) {
+function PasswordModal({
+  isOpen,
+  onClose,
+  onSave,
+  editingPassword,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (password: Omit<PasswordEntry, "id" | "createdAt">) => void;
+  editingPassword?: PasswordEntry | null;
+}) {
   const [formData, setFormData] = React.useState({
     name: "",
     username: "",
@@ -761,155 +765,161 @@ export default function PasswordPage() {
 
   return (
     <div className="flex flex-1 flex-col h-full bg-background">
-      <div className="flex flex-col items-center flex-1 overflow-y-auto px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="flex w-full max-w-2xl flex-col gap-6"
-        >
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <motion.div
-                initial={{ rotate: -180, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-              >
-                <Key className="h-7 w-7 text-muted-foreground" />
-              </motion.div>
-              <h1 className="text-2xl font-medium text-foreground">Password Vault</h1>
-            </div>
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={openAddModal}
-              className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </motion.button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4"
-          >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Rechercher dans vos mots de passe..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-md border border-border bg-input py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
+      <div className="flex flex-1 overflow-y-auto">
+        <div className="flex flex-col items-center px-4 py-3 w-full">
+          <div className="flex w-full max-w-3xl flex-col gap-4">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-wrap gap-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-center justify-between"
             >
-              {CATEGORIES.map((category, index) => (
-                <motion.button
-                  key={category}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + index * 0.05, type: "spring", stiffness: 200 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    selectedCategory === category
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {category}
-                </motion.button>
-              ))}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center justify-between border-t border-border pt-3"
-            >
-              <span className="text-xs text-muted-foreground">
-                {filteredPasswords.length} mot{filteredPasswords.length !== 1 ? "s" : ""} de passe
-              </span>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Shield className="h-3.5 w-3.5" />
-                <span>Chiffré de bout en bout</span>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          <AnimatePresence mode="popLayout">
-            {filteredPasswords.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-12 text-center"
-              >
+              <div className="flex items-center gap-3">
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary"
+                  initial={{ rotate: -180, scale: 0 }}
+                  animate={{ rotate: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"
                 >
-                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  <Key className="h-5 w-5 text-muted-foreground" />
                 </motion.div>
-                <p className="text-sm font-medium text-foreground">Aucun mot de passe trouvé</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {searchQuery || selectedCategory !== "Tous"
-                    ? "Essayez de modifier vos critères de recherche"
-                    : "Ajoutez votre premier mot de passe"}
-                </p>
-                {!searchQuery && selectedCategory === "Tous" && (
+                <h1 className="text-xl font-semibold text-foreground">Password Vault</h1>
+              </div>
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={openAddModal}
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Ajouter
+              </motion.button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+            >
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Rechercher dans vos mots de passe..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-full border border-border bg-input py-2.5 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-wrap gap-2"
+              >
+                {CATEGORIES.map((category, index) => (
                   <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={openAddModal}
-                    className="mt-4 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    key={category}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + index * 0.05, type: "spring", stiffness: 200 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      selectedCategory === category
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
                   >
-                    <Plus className="h-4 w-4" />
-                    Ajouter un mot de passe
+                    {category}
                   </motion.button>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div className="flex flex-col gap-3">
-                {filteredPasswords.map((password, index) => (
-                  <PasswordItem
-                    key={password.id}
-                    password={password}
-                    onEdit={() => openEditModal(password)}
-                    onDelete={() => handleDeletePassword(password.id)}
-                    onToggleFavorite={() => handleToggleFavorite(password.id)}
-                  />
                 ))}
               </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-between border-t border-border pt-3"
+              >
+                <span className="text-xs text-muted-foreground">
+                  {filteredPasswords.length} mot{filteredPasswords.length !== 1 ? "s" : ""} de passe
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Chiffré de bout en bout</span>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            <AnimatePresence mode="popLayout">
+              {filteredPasswords.length === 0 ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-12 text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                    className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary"
+                  >
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  </motion.div>
+                  <p className="text-sm font-medium text-foreground">Aucun mot de passe trouvé</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {searchQuery || selectedCategory !== "Tous"
+                      ? "Essayez de modifier vos critères de recherche"
+                      : "Ajoutez votre premier mot de passe"}
+                  </p>
+                  {!searchQuery && selectedCategory === "Tous" && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={openAddModal}
+                      className="mt-4 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Ajouter un mot de passe
+                    </motion.button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div className="flex flex-col gap-3">
+                  {filteredPasswords.map((password, index) => (
+                    <motion.div
+                      key={password.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + index * 0.05 }}
+                    >
+                      <PasswordItem
+                        password={password}
+                        onEdit={() => openEditModal(password)}
+                        onDelete={() => handleDeletePassword(password.id)}
+                        onToggleFavorite={() => handleToggleFavorite(password.id)}
+                      />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <Footer />
+        </div>
       </div>
 
       <PasswordModal

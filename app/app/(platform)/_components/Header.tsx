@@ -16,7 +16,9 @@ export function Header() {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
       <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold font-sans text-foreground">Aether Account</h1>
+        <h1 className="text-sm font-medium font-sans text-white/70">
+          Sky Genesis Enterprise Account
+        </h1>
       </div>
 
       <div className="flex items-center gap-1">
