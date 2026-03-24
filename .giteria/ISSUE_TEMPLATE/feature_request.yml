@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest an idea or improvement for Aether Account
+description: Suggest an idea or improvement for Aether Calendar
 title: "[Feature]: "
 labels: [enhancement]
 assignees: []
@@ -28,7 +28,7 @@ body:
     id: rationale
     attributes:
       label: Why is this needed?
-      description: Explain the value this feature adds to Aether Account.
+      description: Explain the value this feature adds to Aether Mail.
       placeholder: ex. Many users work at night and dark mode would reduce eye strain.
 
   - type: textarea
