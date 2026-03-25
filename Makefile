@@ -1,4 +1,4 @@
-.PHONY: help build build-app build-server build-dev build-cloud run-app run-server run-dev run-prod stop clean prune rmi-dev dev-up dev-down
+.PHONY: help build build-app build-server build-dev build-cloud run-app run-server run-dev run-prod stop clean prune rmi-dev dev-up dev-down dev-logs
 
 APP_NAME := aether-account
 
@@ -19,6 +19,7 @@ help:
 	@echo "  rmi-dev       - Remove dev image and container"
 	@echo "  dev-up        - Start dev environment (docker-compose)"
 	@echo "  dev-down      - Stop dev environment"
+	@echo "  dev-logs      - View dev environment logs"
 	@echo "  cloud-up      - Start cloud environment (docker-compose)"
 	@echo "  cloud-down    - Stop cloud environment"
 	@echo "  cloud-logs    - View cloud environment logs"
@@ -36,7 +37,7 @@ build-dev:
 	docker build -f Dockerfile.dev -t $(APP_NAME)-dev:latest .
 
 build-cloud:
-	docker build -f Dockerfile.cloud -t $(APP_NAME)-cloud:latest .
+	docker build -f Dockerfile.cloud -t $(APP_NAME):latest .
 
 run-app:
 	docker run --name $(APP_NAME)-app -p 3000:3000 $(APP_NAME)-app:latest
@@ -71,6 +72,9 @@ dev-up:
 
 dev-down:
 	docker compose -f docker-compose.dev.yml down
+
+dev-logs:
+	docker logs -f aether-account-dev
 
 cloud-up:
 	docker compose -f docker-compose.cloud.yml up -d

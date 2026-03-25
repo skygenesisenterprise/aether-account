@@ -3,53 +3,61 @@
 
 FROM node:20-alpine AS base
 
-# Install Go
+# Set working directory
+WORKDIR /app
+
+# Install OS dependencies
 RUN apk add --no-cache \
     wget \
     ca-certificates \
     curl \
     git \
-    && wget -q https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go.tar && \
-    tar -C /usr/local -xzf /tmp/go.tar && rm /tmp/go.tar
+    bash \
+    nginx \
+    build-base \
+    libc6-compat
 
-ENV PATH="/usr/local/go/bin:${PATH}"
+# Install Go
+RUN wget -q https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go.tar \
+    && tar -C /usr/local -xzf /tmp/go.tar \
+    && rm /tmp/go.tar
+
+ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
-ENV PATH="${GOPATH}/bin:${PATH}"
 
-# Install tools
-RUN go install github.com/air-verse/air@latest && \
-    go install github.com/sqlc-dev/sqlc@latest && \
-    go install github.com/pressly/goose/cmd/goose@latest
+# Install development Go tools
+RUN mkdir -p /go/bin \
+    && go install github.com/air-verse/air@latest \
+    && go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest \
+    && go install github.com/pressly/goose/cmd/goose@latest
 
-# Enable corepack for pnpm
+# Enable pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-WORKDIR /app
+# Copy only package files first (for caching pnpm install)
+COPY app/package.json app/pnpm-lock.yaml* ./app/
 
-# Install frontend dependencies
-COPY app/package.json app/pnpm-lock.yaml* ./
+# Install dependencies
+WORKDIR /app/app
 RUN pnpm install
 
-# Copy app source
-COPY app/ ./
+# Copy application and server code
+COPY app/ /app/app/
+COPY server/ /app/server/
+COPY go.mod go.sum* /app/
 
-# Copy server source
-COPY server/ ./
-
-# Copy root files
-COPY go.mod go.sum* ./
-
-# Install backend dependencies
+# Download Go modules
+WORKDIR /app
 RUN go mod download
 
-# Create directories
-RUN mkdir -p /app/src/logs /app/tmp
-
-# Copy nginx config for reverse proxy
+# Copy Nginx config
 COPY app/nginx.conf /etc/nginx/http.d/default.conf
 
 # Expose ports
-EXPOSE 3000 8080
+EXPOSE 3000
 
-# Default: run both frontend dev server and backend
-CMD ["sh", "-c", "nginx && air -c .air.toml & pnpm dev & wait"]
+# Start container
+# - Creates logs/tmp directories
+# - Starts nginx
+# - Starts Air for live reload (Go)
+CMD ["sh", "-c", "mkdir -p /app/app/src/logs /app/tmp && nginx && cd /app && air -c .air.toml"]

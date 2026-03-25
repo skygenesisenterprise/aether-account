@@ -28,10 +28,12 @@ const navigation: NavSection[] = [
       { label: "Third-party Apps", href: "/third-party", icon: Box },
       { label: "Contacts", href: "/contacts", icon: Share2 },
       { label: "Data Control", href: "/privacy", icon: Database },
-      { label: "Plans & Wallet", href: "/wallet", icon: Wallet }
+      { label: "Plans & Wallet", href: "/wallet", icon: Wallet },
     ],
   },
 ];
+
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -73,6 +75,9 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+      <footer className="flex items-center justify-center px-3 py-2">
+        <span className="text-xs text-muted-foreground">Aether Account v{APP_VERSION}</span>
+      </footer>
     </aside>
   );
 }
