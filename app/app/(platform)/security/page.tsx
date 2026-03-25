@@ -94,7 +94,7 @@ const initialOfficeInvite: SecuritySetting = {
 const initialRecoveryPhone: SecuritySetting = {
   id: "recovery-phone",
   label: "Téléphone pour la validation en deux étapes",
-  value: "0470 03 97 11",
+  value: "+1 (555) 123-4567",
 };
 
 const initialBackupPhone: SecuritySetting = {
@@ -107,7 +107,7 @@ const initialBackupPhone: SecuritySetting = {
 const initialRecoveryEmail: SecuritySetting = {
   id: "recovery-email",
   label: "Adresse e-mail de récupération",
-  value: "liam.dispa@aethermail.me",
+  value: "john.doe@aethermail.me",
 };
 
 const devices: Device[] = [

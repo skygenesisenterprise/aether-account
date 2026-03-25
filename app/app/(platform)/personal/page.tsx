@@ -48,9 +48,9 @@ const initialPersonalInfo: PersonalInfo = {
   firstName: "Liam",
   lastName: "Von Astoria",
   gender: "Homme",
-  emails: ["starslabstechnology@gmail.com", "liam.dispa@aethermail.me"],
-  phone: "0470 03 97 11",
-  birthDate: "6 juin 2005",
+  emails: ["john.doe@gmail.com"],
+  phone: "+1 (555) 123-4567",
+  birthDate: "1 janvier 2000",
   language: "Français (France)",
 };
 
@@ -58,13 +58,13 @@ const initialAddresses: Address[] = [
   {
     id: "home",
     label: "Adresse domicile",
-    value: "Rue des Joncs fleuris 10, Neupré",
+    value: "123 Rue de la Paix, Paris",
     isEmpty: false,
   },
   {
     id: "work",
     label: "Adresse professionnelle",
-    value: "Rue des Roseaux 10, Neupré",
+    value: "456 Avenue des Champs, Paris",
     isEmpty: false,
   },
   { id: "other", label: "Autres adresses", value: "", isEmpty: true },

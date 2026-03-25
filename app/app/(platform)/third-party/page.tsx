@@ -11,9 +11,7 @@ import {
   Plus,
   Shield,
   Globe,
-  Key,
   Smartphone,
-  Lock,
   Eye,
   Laptop,
   Gamepad2,
@@ -26,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -421,7 +418,7 @@ export default function ThirdPartyPage() {
           <DialogHeader>
             <DialogTitle>Connecter une application</DialogTitle>
             <DialogDescription>
-              Sélectionnez une application à connecter à votre compte Aether.
+              Sélectionnez une application à connecter à votre compte Aether Office.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 py-4">

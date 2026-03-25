@@ -51,7 +51,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "1",
     name: "Google",
-    username: "starslabstechnology@gmail.com",
+    username: "john.doe@gmail.com",
     password: "xK9#mP2$vL5@nQ8",
     url: "https://google.com",
     favorite: true,
@@ -62,7 +62,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "2",
     name: "GitHub",
-    username: "liam.von.astoria",
+    username: "johndoe",
     password: "GitHub@2024!Secure",
     url: "https://github.com",
     favorite: true,
@@ -72,7 +72,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "3",
     name: "Netflix",
-    username: "starslabstechnology@gmail.com",
+    username: "john.doe@gmail.com",
     password: "Stream&Watch2024",
     url: "https://netflix.com",
     favorite: false,
@@ -82,7 +82,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "4",
     name: "Discord",
-    username: "LiamVonAstoria#1234",
+    username: "johndoe#1234",
     password: "Discord_Secure#2024",
     url: "https://discord.com",
     favorite: false,
@@ -92,9 +92,9 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "5",
     name: "AetherMail",
-    username: "liam.dispa@aethermail.me",
+    username: "john.doe@aethermail.me",
     password: "AetherMail$Secure2024",
-    url: "https://aethermail.me",
+    url: "https://mail.skygenesisenterprise.com",
     favorite: true,
     createdAt: "1 jan. 2024",
     category: "Communication",
@@ -102,7 +102,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "6",
     name: "LinkedIn",
-    username: "liam.von.astoria@outlook.com",
+    username: "john.doe@outlook.com",
     password: "LinkedIn@Professional",
     url: "https://linkedin.com",
     favorite: false,
@@ -112,7 +112,7 @@ const MOCK_PASSWORDS: PasswordEntry[] = [
   {
     id: "7",
     name: "Steam",
-    username: "LiamVonAstoria",
+    username: "JohnDoe123",
     password: "Steam_Game2024!Key",
     url: "https://store.steampowered.com",
     favorite: false,

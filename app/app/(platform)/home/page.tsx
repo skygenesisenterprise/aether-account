@@ -45,8 +45,8 @@ const quickActions = [
   },
   {
     icon: Mail,
-    label: "AetherMail",
-    description: "liam.dispa@aethermail.me",
+    label: "Aether Mail",
+    description: "john.doe@aethermail.me",
     href: "/personal",
     color: "text-orange-500",
   },
@@ -127,10 +127,10 @@ export default function HomePage() {
                 </motion.div>
                 <div className="flex flex-col items-center text-center">
                   <h1 className="text-xl font-semibold text-foreground">
-                    {user?.name || "Liam Von Astoria"}
+                    {user?.name || "John Doe"}
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    {user?.email || "starslabstechnology@gmail.com"}
+                    {user?.email || "john.doe@aethermail.me"}
                   </p>
                 </div>
               </div>
@@ -288,17 +288,17 @@ export default function HomePage() {
               <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Nom</span>
-                  <span className="text-sm font-medium text-foreground">Liam Von Astoria</span>
+                  <span className="text-sm font-medium text-foreground">John Doe</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">E-mail principal</span>
                   <span className="text-sm font-medium text-foreground truncate">
-                    starslabstechnology@gmail.com
+                    john.doe@aethermail.me
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Téléphone</span>
-                  <span className="text-sm font-medium text-foreground">0470 03 97 11</span>
+                  <span className="text-sm font-medium text-foreground">+1 (555) 123-4567</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Genre</span>
@@ -306,7 +306,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Date de naissance</span>
-                  <span className="text-sm font-medium text-foreground">6 juin 2005</span>
+                  <span className="text-sm font-medium text-foreground">1 janvier 2000</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">Langue</span>
