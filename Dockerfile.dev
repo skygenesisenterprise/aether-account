@@ -58,6 +58,8 @@ EXPOSE 3000
 
 # Start container
 # - Creates logs/tmp directories
+# - Ensures pnpm dependencies are linked
 # - Starts nginx
 # - Starts Air for live reload (Go)
-CMD ["sh", "-c", "mkdir -p /app/app/src/logs /app/tmp && nginx && cd /app && air -c .air.toml"]
+# - Starts Next.js dev server
+CMD ["sh", "-c", "mkdir -p /app/app/src/logs /app/tmp && cd /app/app && pnpm install --frozen-lockfile || true && nginx && cd /app && air -c .air.toml"]

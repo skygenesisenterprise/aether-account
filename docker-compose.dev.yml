@@ -22,10 +22,9 @@ services:
       - ./app/src:/app/app/src
       - ./app/public:/app/app/public
       - ./app/package.json:/app/app/package.json
-      - ./app/package-lock.json:/app/app/package-lock.json
-      - ./app/pnpm-lock.yaml:/app/app/pnpm-lock.yaml
       - ./app/next.config.ts:/app/app/next.config.ts
       - ./app/tsconfig.json:/app/app/tsconfig.json
+      - ./app/node_modules:/app/app/node_modules
       - ./server:/app/server
       - ./.air.toml:/app/.air.toml
       - ./.env:/app/.env
