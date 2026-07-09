@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BellRing, Eye, Globe, Loader2, Monitor, Moon, Palette, Save, ShieldCheck, Sun } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { BellRing, Globe, Loader2, Monitor, Moon, Palette, Save, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

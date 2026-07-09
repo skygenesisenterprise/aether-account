@@ -82,8 +82,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
   ],
   "exclude": [
     "node_modules",
@@ -95,5 +93,4 @@
       "module": "esnext"
     }
   },
-  "extends": "expo/tsconfig.base"
 }

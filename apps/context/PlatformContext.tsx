@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api/errors";
@@ -24,6 +25,39 @@ interface PlatformContextValue {
 }
 
 const PlatformContext = React.createContext<PlatformContextValue | undefined>(undefined);
+
+// Fallback component for when PlatformProviderContent is loading
+function PlatformProviderFallback({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUserState] = React.useState<User | null>(null);
+  const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceIdState] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<ApiError | null>(null);
+
+  const setActiveWorkspaceId = React.useCallback((workspaceId: string) => {
+    setActiveWorkspaceIdState(workspaceId);
+  }, []);
+
+  const setCurrentUser = React.useCallback((user: User | null) => {
+    setCurrentUserState(user);
+  }, []);
+
+  const value = React.useMemo<PlatformContextValue>(
+    () => ({
+      currentUser,
+      workspaces,
+      activeWorkspace: workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null,
+      activeWorkspaceId,
+      setActiveWorkspaceId,
+      setCurrentUser,
+      isLoading,
+      error,
+    }),
+    [activeWorkspaceId, currentUser, error, isLoading, setActiveWorkspaceId, setCurrentUser, workspaces]
+  );
+
+  return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;
+}
 
 function readStoredWorkspaceId(): string | null {
   if (typeof window === "undefined") {
@@ -64,7 +98,8 @@ function replaceWorkspaceParam(
   router.replace(`${pathname}?${nextParams.toString()}`);
 }
 
-export function PlatformProvider({ children }: { children: React.ReactNode }) {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function PlatformProviderContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -201,6 +236,15 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;
+}
+
+// Main PlatformProvider that wraps the content in Suspense
+export function PlatformProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<PlatformProviderFallback>{children}</PlatformProviderFallback>}>
+      <PlatformProviderContent>{children}</PlatformProviderContent>
+    </Suspense>
+  );
 }
 
 export function usePlatform(): PlatformContextValue {
