@@ -1,81 +1,109 @@
-# Multi-stage Dockerfile for Aether Account Cloud
-# Builds: aether-account-cloud
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage 1 — Go Builder API / Worker / WebRTC
+# ══════════════════════════════════════════════════════════════════════════════
+FROM golang:1.26-alpine AS go-builder
 
-# Stage 1: Frontend (Next.js)
-FROM node:20-alpine AS frontend-builder
+RUN apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
-COPY app/package.json app/pnpm-lock.yaml* ./
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-COPY app/ ./
-RUN pnpm install --frozen-lockfile && \
-    NEXT_PUBLIC_ENVIRONMENT=production pnpm build
-
-# Stage 2: Backend (Go)
-FROM golang:1.25-alpine AS backend-builder
-
-WORKDIR /build
-
-COPY go.mod go.sum* ./
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY server/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s" \
-    -o aether-server \
-    ./server/
+COPY server/ ./server/
 
-# Generate Prisma Client (if needed)
-RUN go run github.com/prisma/prisma-client-go generate 2>/dev/null || true
+RUN CGO_ENABLED=1 GOOS=linux \
+    go build -ldflags="-s -w" -o /app/server/aether-meet ./server/
 
-# Stage 3: Runtime
-FROM alpine:3.19 AS runtime
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage 2 — Node.js / pnpm Next.js Build
+# ══════════════════════════════════════════════════════════════════════════════
+FROM node:25-alpine AS node-builder
 
-LABEL maintainer="Sky Genesis Enterprise"
-LABEL description="Aether Account Cloud - Enterprise Account Management Platform"
-
-RUN apk add --no-cache \
-    nginx \
-    nodejs \
-    curl \
-    ca-certificates \
-    tzdata \
-    && rm -rf /var/cache/apk/*
-
-# Create non-root user
-RUN addgroup -g 1000 -S aether && \
-    adduser -u 1000 -S aether -G aether
+ARG DATABASE_URL
 
 WORKDIR /app
 
-# Copy frontend build
-COPY --from=frontend-builder /app/.next/standalone ./
-COPY --from=frontend-builder /app/.next/static ./.next/static/
-COPY --from=frontend-builder /app/public ./public
-COPY --from=frontend-builder /app/package.json ./
+RUN npm install -g corepack --force \
+    && corepack enable \
+    && corepack prepare pnpm@9.15.4 --activate
 
-# Copy backend
-COPY --from=backend-builder /build/aether-server ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/ ./apps/
 
-# Copy nginx configuration
-COPY app/nginx.conf /etc/nginx/http.d/default.conf
+RUN mkdir -p app/next/fond/google
+RUN printf 'module.exports = {};\n' > app/next/fond/google/index.js
+RUN printf '{"name":"google","version":"0.0.0"}\n' > app/next/fond/google/package.json
 
-# Create directories for logs and runtime
-RUN mkdir -p /var/log/nginx /app/data && \
-    chown -R aether:aether /app
+RUN pnpm install --filter @aether-meet/apps... --no-frozen-lockfile
+RUN BUILD_WEB_STATIC=true pnpm --dir app build
 
-USER aether
+# ── Prisma ──────────────────────────────────────────────────────────────────
+COPY server/prisma/package.json server/prisma/package-lock.json /tmp/prisma/
+
+RUN cd /tmp/prisma \
+    && npm ci --no-audit --no-fund
+
+COPY server/prisma/schema.prisma server/prisma/prisma.config.ts /tmp/prisma/
+COPY server/prisma/migrations/ /tmp/prisma/migrations/
+
+RUN test -n "$DATABASE_URL" \
+    || (echo "DATABASE_URL build argument is required for Prisma generation" >&2 && exit 1)
+
+RUN cd /tmp/prisma \
+    && DATABASE_URL="$DATABASE_URL" npx prisma generate
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Stage final — Production Image
+# ══════════════════════════════════════════════════════════════════════════════
+FROM alpine:3.23
+
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    bash \
+    wget \
+    libc6-compat \
+    postgresql-client \
+    nodejs \
+    npm \
+    openssl
+
+RUN npm install -g http-server@14
+
+ENV PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
 
 ENV NODE_ENV=production
-ENV ENVIRONMENT=production
-ENV SERVER_PORT=8080
+ENV USE_EMBEDDED_DB=false
+ENV LOG_LEVEL=info
+
+ENV HTTP_ACCESS_LOGS=false
+ENV API_ACCESS_LOGS=false
+ENV WORKER_WAIT_FOR_DB=false
+
+ENV FRONTEND_PORT=3000
+ENV API_PORT=8080
+
+WORKDIR /app
+
+# ── Static Web Build ─────────────────────────────────────────────────────────
+COPY --from=node-builder /app/app/out ./out
+
+# ── Prisma Client / Migrations ───────────────────────────────────────────────
+COPY --from=node-builder /tmp/prisma/ ./prisma/
+
+# ── Go Backend Binary ────────────────────────────────────────────────────────
+COPY --from=go-builder /app/server/aether-meet ./server/aether-meet
+
+# Compatibilité avec anciens scripts éventuels
+RUN ln -s /app/server/aether-meet /app/server/etheriatimes-api
+
+# ── Entrypoint ───────────────────────────────────────────────────────────────
+COPY entrypoint-cloud.sh /entrypoint-cloud.sh
+RUN chmod +x /entrypoint-cloud.sh
 
 EXPOSE 3000
+EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
-
-# Start nginx (reverse proxy) and backend server
-ENTRYPOINT ["sh", "-c", "nginx && ./aether-server"]
+ENTRYPOINT ["/entrypoint-cloud.sh"]
