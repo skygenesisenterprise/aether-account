@@ -3,180 +3,954 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider     = "postgresql"
+  relationMode = "prisma"
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  email               String    @unique
-  name                String?
-  firstName           String?
-  lastName            String?
-  password            String?
-  gender              String?
-  birthDate           DateTime?
-  phone               String?
-  avatarUrl           String?
-  language            String    @default("Français (France)")
-  aetherId            String    @unique
-  accountType         String    @default("Entreprise")
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  emailVerified        DateTime?
-  twoFactorEnabled     Boolean   @default(false)
-  twoFactorSecret     String?
-  passkeyEnabled      Boolean   @default(true)
-  secureNavigation    Boolean   @default(false)
+  id                       String                     @id @default(uuid())
+  email                    String                     @unique
+  displayName              String                     @map("display_name")
+  avatarUrl                String?                    @map("avatar_url")
+  status                   String                     @default("offline")
+  lastSeenAt               DateTime?                  @map("last_seen_at")
+  disabledAt               DateTime?                  @map("disabled_at")
+  createdAt                DateTime                   @default(now()) @map("created_at")
+  updatedAt                DateTime                   @updatedAt @map("updated_at")
+  settings                 UserSettings?
+  notificationPreferences  NotificationPreference?
+  authAccounts             AuthAccount[]
+  authSessions             AuthSession[]
+  workspacesOwned          Workspace[]                @relation("WorkspaceOwner")
+  workspaceMemberships     WorkspaceMember[]
+  teamsCreated             Team[]                     @relation("TeamCreator")
+  teamMemberships          TeamMember[]
+  channelsCreated          Channel[]                  @relation("ChannelCreator")
+  channelMemberships       ChannelMember[]
+  conversationsCreated     Conversation[]             @relation("ConversationCreator")
+  conversationMemberships  ConversationMember[]
+  messagesAuthored         Message[]                  @relation("MessageAuthor")
+  reactions                Reaction[]
+  readReceipts             ReadReceipt[]
+  meetingsCreated          Meeting[]                  @relation("MeetingCreator")
+  meetingParticipants      MeetingParticipant[]
+  meetingSessionParticipants MeetingSessionParticipant[]
+  calendars                Calendar[]
+  calendarEventsCreated    CalendarEvent[]            @relation("CalendarEventAuthor")
+  integrationsCreated      Integration[]              @relation("IntegrationCreator")
+  auditLogs                AuditLog[]                 @relation("AuditActor")
+  notifications            Notification[]
+  contacts                 Contact[]                  @relation("ContactOwner")
+  contactLinks             Contact[]                  @relation("ContactLinkedUser")
+  contactGroupsCreated     ContactGroup[]             @relation("ContactGroupCreator")
+  projectsOwned            Project[]                  @relation("ProjectOwner")
+  projectMemberships       ProjectMember[]
+  tasksAssigned            Task[]                     @relation("TaskAssignee")
+  tasksReported            Task[]                     @relation("TaskReporter")
+  taskComments             TaskComment[]
+  documentsOwned           Document[]                 @relation("DocumentOwner")
+  resourcesOwned           Resource[]                 @relation("ResourceOwner")
+  attachmentsOwned         Attachment[]               @relation("AttachmentOwner")
+  callsInitiated           CallRecord[]               @relation("CallInitiator")
+  voicemailsOwned          Voicemail[]                @relation("VoicemailOwner")
 
-  passwords           Password[]
-  addresses           Address[]
-  recoveryEmails     RecoveryEmail[]
-  recoveryPhones     RecoveryPhone[]
-  devices             Device[]
-  sessions            Session[]
-  thirdPartyApps      ThirdPartyApp[]
-  securityActivities  SecurityActivity[]
-  passwordKeys        PasswordKey[]
-  authenticators      Authenticator[]
+  @@index([status, lastSeenAt])
+  @@map("users")
 }
 
-model Password {
-  id          String   @id @default(cuid())
-  name        String
-  username    String
-  password    String
-  url         String?
-  favorite    Boolean  @default(false)
-  category    String
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
+model UserSettings {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  theme                String   @default("system")
+  language             String   @default("fr")
+  locale               String   @default("fr")
+  timeZone             String   @default("Europe/Paris") @map("time_zone")
+  statusMessage        String?  @map("status_message")
+  cameraLabel          String?  @map("camera_label")
+  microphoneLabel      String?  @map("microphone_label")
+  soundEnabled         Boolean  @default(true) @map("sound_enabled")
+  secureSession        Boolean  @default(true) @map("secure_session")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model NotificationPreference {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  emailNotifications    Boolean  @default(true) @map("email_notifications")
+  mentionNotifications  Boolean  @default(true) @map("mention_notifications")
+  meetingReminders      Boolean  @default(true) @map("meeting_reminders")
+  callNotifications     Boolean  @default(true) @map("call_notifications")
+  systemNotifications   Boolean  @default(true) @map("system_notifications")
+  quietHours            Json?    @map("quiet_hours")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model AuthAccount {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  provider          String
+  providerAccountId String    @map("provider_account_id")
+  email             String?
+  accessToken       String?   @map("access_token")
+  refreshToken      String?   @map("refresh_token")
+  scopes            String[]  @default([])
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId, provider])
+  @@map("auth_accounts")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  tokenHash        String    @unique @map("token_hash")
+  refreshTokenHash String?   @unique @map("refresh_token_hash")
+  ipAddress        String?   @map("ip_address")
+  userAgent        String?   @map("user_agent")
+  expiresAt        DateTime  @map("expires_at")
+  lastActiveAt     DateTime? @map("last_active_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model Workspace {
+  id               String         @id @default(uuid())
+  name             String
+  slug             String         @unique
+  description      String?
+  visibility       String         @default("private")
+  ownerId          String         @map("owner_id")
+  archivedAt       DateTime?      @map("archived_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  owner            User           @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members          WorkspaceMember[]
+  ssoConfig        WorkspaceSSOConfig?
+  teams            Team[]
+  channels         Channel[]
+  conversations    Conversation[]
+  messages         Message[]
+  meetings         Meeting[]
+  meetingSessions  MeetingSession[]
+  meetingSessionParticipants MeetingSessionParticipant[]
+  integrations     Integration[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  calendars        Calendar[]
+  calendarEvents   CalendarEvent[]
+  contacts         Contact[]
+  contactGroups    ContactGroup[]
+  projects         Project[]
+  tasks            Task[]
+  documents        Document[]
+  resources        Resource[]
+  attachments      Attachment[]
+  callRecords      CallRecord[]
+  voicemails       Voicemail[]
+  outboxEvents     OutboxEvent[]
+  webrtcWebhookEvents WebRtcWebhookEvent[]
+
+  @@index([ownerId])
+  @@index([archivedAt])
+  @@map("workspaces")
+}
+
+model WorkspaceSSOConfig {
+  id                 String    @id @default(uuid())
+  workspaceId        String    @unique @map("workspace_id")
+  provider           String    @default("oidc")
+  enabled            Boolean   @default(false)
+  enforceSso         Boolean   @default(false) @map("enforce_sso")
+  allowPasswordAuth  Boolean   @default(true) @map("allow_password_auth")
+  autoProvision      Boolean   @default(true) @map("auto_provision")
+  allowIdpInitiated  Boolean   @default(false) @map("allow_idp_initiated")
+  domainHint         String?   @map("domain_hint")
+  issuerUrl          String?   @map("issuer_url")
+  ssoUrl             String?   @map("sso_url")
+  entityId           String?   @map("entity_id")
+  clientId           String?   @map("client_id")
+  clientSecret       String?   @map("client_secret")
+  certificate        String?
+  allowedDomains     Json?     @map("allowed_domains")
+  defaultRole        String    @default("member") @map("default_role")
+  attributeMapping   Json?     @map("attribute_mapping")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("workspace_sso_configs")
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String    @map("workspace_id")
+  userId      String    @map("user_id")
+  role        String
+  joinedAt    DateTime  @map("joined_at")
+  lastSeenAt  DateTime? @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Team {
+  id               String       @id @default(uuid())
+  workspaceId      String       @map("workspace_id")
+  name             String
+  slug             String?
+  description      String?
+  color            String?
+  createdById      String       @map("created_by")
+  archivedAt       DateTime?    @map("archived_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy        User         @relation("TeamCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members          TeamMember[]
+  channels         Channel[]
+  projects         Project[]
+  tasks            Task[]
+  documents        Document[]
+  resources        Resource[]
+
+  @@index([workspaceId, archivedAt])
+  @@unique([workspaceId, slug])
+  @@map("teams")
+}
+
+model TeamMember {
+  id         String    @id @default(uuid())
+  teamId      String   @map("team_id")
+  userId      String   @map("user_id")
+  role        String   @default("member")
+  joinedAt    DateTime? @map("joined_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([teamId, userId])
   @@index([userId])
-  @@index([category])
+  @@map("team_members")
 }
 
-model Address {
-  id        String   @id @default(cuid())
-  label     String
-  value     String
-  isPrimary Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Channel {
+  id             String          @id @default(uuid())
+  workspaceId    String          @map("workspace_id")
+  teamId         String?         @map("team_id")
+  name           String
+  slug           String
+  description    String?
+  type           String
+  visibility     String
+  createdById    String          @map("created_by")
+  archivedAt     DateTime?       @map("archived_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team           Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy      User            @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members        ChannelMember[]
+  conversation   Conversation?
 
-  @@index([userId])
+  @@index([workspaceId, archivedAt])
+  @@unique([workspaceId, slug])
+  @@map("channels")
 }
 
-model RecoveryEmail {
-  id        String   @id @default(cuid())
-  email     String
-  isPrimary Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model ChannelMember {
+  id          String    @id @default(uuid())
+  channelId   String    @map("channel_id")
+  userId      String    @map("user_id")
+  lastReadAt  DateTime? @map("last_read_at")
+  muted       Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([email, userId])
+  @@unique([channelId, userId])
   @@index([userId])
+  @@map("channel_members")
 }
 
-model RecoveryPhone {
-  id        String   @id @default(cuid())
-  phone     String
-  isPrimary Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Conversation {
+  id            String               @id @default(uuid())
+  workspaceId    String              @map("workspace_id")
+  channelId      String?             @unique @map("channel_id")
+  type          String
+  name          String?
+  createdById   String               @map("created_by")
+  archivedAt    DateTime?            @map("archived_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+  workspace     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel       Channel?             @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  createdBy     User                 @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members       ConversationMember[]
+  messages      Message[]
+  readReceipts  ReadReceipt[]
+  meetings      Meeting[]
+  calls         CallRecord[]
 
-  @@unique([phone, userId])
-  @@index([userId])
+  @@index([workspaceId, archivedAt])
+  @@map("conversations")
 }
 
-model Device {
-  id          String   @id @default(cuid())
-  name        String
-  type        String
-  os          String?
-  browser     String?
-  lastSeen    DateTime @default(now())
-  isTrusted   Boolean  @default(false)
-  userId      String
+model ConversationMember {
+  id                String        @id @default(uuid())
+  conversationId    String        @map("conversation_id")
+  userId            String        @map("user_id")
+  role              String
+  joinedAt          DateTime      @map("joined_at")
+  lastReadMessageId String?       @map("last_read_message_id")
+  lastReadAt        DateTime?     @map("last_read_at")
+  mutedUntil        DateTime?     @map("muted_until")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  conversation      Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessage   Message?      @relation("ConversationMemberLastReadMessage", fields: [lastReadMessageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_members")
+}
+
+model Message {
+  id               String               @id @default(uuid())
+  workspaceId      String               @map("workspace_id")
+  conversationId   String               @map("conversation_id")
+  authorId         String               @map("author_id")
+  parentMessageId  String?              @map("parent_message_id")
+  type             String
+  content          String
+  metadata         Json?
+  editedAt         DateTime?            @map("edited_at")
+  deletedAt        DateTime?            @map("deleted_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation     Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author           User                 @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  parentMessage    Message?             @relation("MessageReplies", fields: [parentMessageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replies          Message[]            @relation("MessageReplies")
+  reactions        Reaction[]
+  readReceipts     ReadReceipt[]
+  referencedByMembers ConversationMember[] @relation("ConversationMemberLastReadMessage")
+  attachments      Attachment[]
+
+  @@index([conversationId, createdAt])
+  @@index([workspaceId, deletedAt])
+  @@map("messages")
+}
+
+model Reaction {
+  id         String    @id @default(uuid())
+  messageId   String   @map("message_id")
+  userId      String   @map("user_id")
+  emoji       String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  sessions    Session[]
-
+  @@unique([messageId, userId, emoji])
   @@index([userId])
-  @@index([type])
+  @@map("reactions")
 }
 
-model Session {
-  id            String    @id @default(cuid())
-  token         String    @unique
-  deviceId      String?
-  device        Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
-  userId        String
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ipAddress     String?
-  userAgent     String?
-  expiresAt     DateTime?
-  createdAt     DateTime  @default(now())
+model ReadReceipt {
+  id             String        @id @default(uuid())
+  conversationId String        @map("conversation_id")
+  messageId      String        @map("message_id")
+  userId         String        @map("user_id")
+  readAt         DateTime      @map("read_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message        Message       @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([token])
-  @@index([deviceId])
+  @@unique([conversationId, messageId, userId])
+  @@index([userId, readAt])
+  @@map("read_receipts")
 }
 
-model ThirdPartyApp {
-  id          String   @id @default(cuid())
-  name        String
-  accessLevel String
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Meeting {
+  id               String               @id @default(uuid())
+  workspaceId      String               @map("workspace_id")
+  conversationId   String?              @map("conversation_id")
+  provider         String
+  providerRoomId   String?              @map("provider_room_id")
+  title            String
+  status           String
+  createdById      String               @map("created_by")
+  startedAt        DateTime?            @map("started_at")
+  endedAt          DateTime?            @map("ended_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation     Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  createdBy        User                 @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  participants     MeetingParticipant[]
+  sessions         MeetingSession[]
+  calendarEvents   CalendarEvent[]
+  callRecords      CallRecord[]
+  webhookEvents    WebRtcWebhookEvent[]
 
-  @@unique([name, userId])
-  @@index([userId])
+  @@index([workspaceId, status])
+  @@index([conversationId])
+  @@map("meetings")
 }
 
-model SecurityActivity {
-  id          String   @id @default(cuid())
-  type        String
-  title       String
-  description String?
-  device      String?
-  ipAddress   String?
-  time        DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MeetingParticipant {
+  id          String     @id @default(uuid())
+  meetingId    String    @map("meeting_id")
+  userId       String    @map("user_id")
+  role         String    @default("attendee")
+  status       String
+  metadata     Json?
+  joinedAt     DateTime? @map("joined_at")
+  leftAt       DateTime? @map("left_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  meeting      Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([type])
-  @@index([time])
+  @@unique([meetingId, userId])
+  @@index([userId, status])
+  @@map("meeting_participants")
 }
 
-model PasswordKey {
-  id          String   @id @default(cuid())
-  name        String
-  publicKey   String
-  credentialId String
-  counter     Int      @default(0)
-  createdAt   DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MeetingSession {
+  id                  String                      @id @default(uuid())
+  meetingId           String                      @map("meeting_id")
+  workspaceId         String                      @map("workspace_id")
+  provider            String
+  providerRoomName    String                      @unique @map("provider_room_name")
+  providerRoomId      String?                     @map("provider_room_id")
+  nodeId              String                      @map("node_id")
+  status              String
+  publicUrl           String                      @map("public_url")
+  signalingUrl        String                      @map("signaling_url")
+  connectionDetails   Json?                       @map("connection_details")
+  startedAt           DateTime?                   @map("started_at")
+  endedAt             DateTime?                   @map("ended_at")
+  createdAt           DateTime                    @default(now()) @map("created_at")
+  updatedAt           DateTime                    @updatedAt @map("updated_at")
+  meeting             Meeting                     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  workspace           Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  node                WebRtcNode                  @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+  participants        MeetingSessionParticipant[]
+  callRecords         CallRecord[]
+  webhookEvents       WebRtcWebhookEvent[]
 
-  @@unique([credentialId])
-  @@index([userId])
+  @@index([meetingId, status])
+  @@index([workspaceId, status])
+  @@index([providerRoomId])
+  @@map("meeting_sessions")
 }
 
-model Authenticator {
-  id           String   @id @default(cuid())
-  name         String
-  publicKey    String
-  credentialId String
-  counter      Int      @default(0)
-  createdAt    DateTime @default(now())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MeetingSessionParticipant {
+  id                String         @id @default(uuid())
+  sessionId         String         @map("session_id")
+  workspaceId       String         @map("workspace_id")
+  userId            String         @map("user_id")
+  providerIdentity  String         @map("provider_identity")
+  role              String
+  status            String
+  metadata          Json?
+  joinedAt          DateTime?      @map("joined_at")
+  leftAt            DateTime?      @map("left_at")
+  lastSeenAt        DateTime?      @map("last_seen_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  session           MeetingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workspace         Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([credentialId])
+  @@unique([sessionId, providerIdentity])
+  @@index([workspaceId, userId])
+  @@map("meeting_session_participants")
+}
+
+model WebRtcNode {
+  id                 String           @id
+  provider           String
+  region             String
+  internalUrl        String           @map("internal_url")
+  publicUrl          String           @map("public_url")
+  status             String
+  capacity           Int              @default(0)
+  activeRooms        Int              @default(0) @map("active_rooms")
+  activeParticipants Int              @default(0) @map("active_participants")
+  lastHeartbeatAt    DateTime?        @map("last_heartbeat_at")
+  draining           Boolean          @default(false)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  sessions           MeetingSession[]
+
+  @@index([provider, status])
+  @@index([region])
+  @@map("webrtc_nodes")
+}
+
+model WebRtcWebhookEvent {
+  id            String          @id @default(uuid())
+  provider      String
+  eventId       String          @map("event_id")
+  eventType     String          @map("event_type")
+  workspaceId   String?         @map("workspace_id")
+  meetingId     String?         @map("meeting_id")
+  sessionId     String?         @map("session_id")
+  providerRoom  String?         @map("provider_room")
+  receivedAt    DateTime        @map("received_at")
+  payload       Json
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  workspace     Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  meeting       Meeting?        @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  session       MeetingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, eventId])
+  @@index([meetingId])
+  @@index([sessionId])
+  @@map("webrtc_webhook_events")
+}
+
+model Integration {
+  id             String    @id @default(uuid())
+  workspaceId     String   @map("workspace_id")
+  provider        String
+  name            String
+  status          String
+  configuration   Json?
+  createdById     String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy       User      @relation("IntegrationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, provider])
+  @@map("integrations")
+}
+
+model AuditLog {
+  id            String    @id @default(uuid())
+  workspaceId    String   @map("workspace_id")
+  actorId        String   @map("actor_id")
+  action         String
+  resourceType   String   @map("resource_type")
+  resourceId     String   @map("resource_id")
+  metadata       Json?
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor          User      @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id              String    @id @default(uuid())
+  workspaceId      String   @map("workspace_id")
+  userId           String   @map("user_id")
+  type             String
+  title            String
+  body             String
+  resourceType     String?  @map("resource_type")
+  resourceId       String?  @map("resource_id")
+  metadata         Json?
+  readAt           DateTime? @map("read_at")
+  idempotencyKey   String?   @unique @map("idempotency_key")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([workspaceId, createdAt])
+  @@map("notifications")
+}
+
+model Calendar {
+  id            String          @id @default(uuid())
+  workspaceId    String?        @map("workspace_id")
+  ownerId        String         @map("owner_id")
+  name           String
+  color          String?
+  isPrimary      Boolean        @default(false) @map("is_primary")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  workspace      Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  events         CalendarEvent[]
+
+  @@unique([ownerId, name])
+  @@index([workspaceId])
+  @@map("calendars")
+}
+
+model CalendarEvent {
+  id            String      @id @default(uuid())
+  calendarId     String     @map("calendar_id")
+  workspaceId    String?    @map("workspace_id")
+  meetingId      String?    @map("meeting_id")
+  taskId         String?    @map("task_id")
+  authorId       String?    @map("author_id")
+  title          String
+  description    String?
+  location       String?
+  startsAt       DateTime   @map("starts_at")
+  endsAt         DateTime   @map("ends_at")
+  allDay         Boolean    @default(false) @map("all_day")
+  status         String     @default("scheduled")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  calendar       Calendar   @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  workspace      Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  meeting        Meeting?   @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  task           Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  author         User?      @relation("CalendarEventAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([calendarId, startsAt])
+  @@map("calendar_events")
+}
+
+model Contact {
+  id              String               @id @default(uuid())
+  workspaceId      String              @map("workspace_id")
+  ownerId          String?             @map("owner_id")
+  linkedUserId     String?             @map("linked_user_id")
+  displayName      String              @map("display_name")
+  email            String?
+  phone            String?
+  company          String?
+  jobTitle         String?             @map("job_title")
+  avatarUrl        String?             @map("avatar_url")
+  status           String?             @default("active")
+  notes            String?
+  metadata         Json?
+  lastContactedAt  DateTime?           @map("last_contacted_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner            User?               @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  linkedUser       User?               @relation("ContactLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
+  groups           ContactGroupMember[]
+
+  @@index([workspaceId, displayName])
+  @@index([linkedUserId])
+  @@map("contacts")
+}
+
+model ContactGroup {
+  id             String               @id @default(uuid())
+  workspaceId     String              @map("workspace_id")
+  createdById     String?             @map("created_by")
+  name            String
+  description     String?
+  color           String?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("ContactGroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  contacts        ContactGroupMember[]
+
+  @@unique([workspaceId, name])
+  @@map("contact_groups")
+}
+
+model ContactGroupMember {
+  id             String       @id @default(uuid())
+  groupId         String      @map("group_id")
+  contactId       String      @map("contact_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  group           ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact         Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, contactId])
+  @@index([contactId])
+  @@map("contact_group_members")
+}
+
+model Project {
+  id             String          @id @default(uuid())
+  workspaceId     String         @map("workspace_id")
+  teamId          String?        @map("team_id")
+  ownerId         String         @map("owner_id")
+  name            String
+  slug            String?
+  summary         String?
+  description     String?
+  status          String         @default("active")
+  health          String         @default("on_track")
+  progress        Int            @default(0)
+  cadence         String?
+  startsAt        DateTime?      @map("starts_at")
+  dueAt           DateTime?      @map("due_at")
+  completedAt     DateTime?      @map("completed_at")
+  archivedAt      DateTime?      @map("archived_at")
+  metadata        Json?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team            Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  owner           User           @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members         ProjectMember[]
+  tasks           Task[]
+  documents       Document[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, archivedAt, status])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id           String    @id @default(uuid())
+  projectId     String   @map("project_id")
+  userId        String   @map("user_id")
+  role          String   @default("member")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
   @@index([userId])
+  @@map("project_members")
+}
+
+model Task {
+  id             String           @id @default(uuid())
+  workspaceId      String         @map("workspace_id")
+  projectId        String?        @map("project_id")
+  teamId           String?        @map("team_id")
+  assigneeId       String?        @map("assignee_id")
+  reporterId       String?        @map("reporter_id")
+  title            String
+  description      String?
+  priority         String         @default("medium")
+  status           String         @default("inbox")
+  sortOrder        Int            @default(0) @map("sort_order")
+  dueAt            DateTime?      @map("due_at")
+  completedAt      DateTime?      @map("completed_at")
+  archivedAt       DateTime?      @map("archived_at")
+  metadata         Json?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project          Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  team             Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  assignee         User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter         User?          @relation("TaskReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  comments         TaskComment[]
+  attachments      Attachment[]
+  calendarEvents   CalendarEvent[]
+
+  @@index([workspaceId, status, sortOrder])
+  @@index([projectId, assigneeId])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id           String    @id @default(uuid())
+  taskId        String   @map("task_id")
+  authorId      String   @map("author_id")
+  body          String
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+model Document {
+  id            String        @id @default(uuid())
+  workspaceId    String       @map("workspace_id")
+  teamId         String?      @map("team_id")
+  projectId      String?      @map("project_id")
+  ownerId        String       @map("owner_id")
+  title          String
+  slug           String?
+  summary        String?
+  content        Json?
+  status         String       @default("draft")
+  visibility     String       @default("workspace")
+  collection     String?
+  lastEditedAt   DateTime?    @map("last_edited_at")
+  archivedAt     DateTime?    @map("archived_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  owner          User         @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  attachments    Attachment[]
+  resources      Resource[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, archivedAt, status])
+  @@map("documents")
+}
+
+model Resource {
+  id            String        @id @default(uuid())
+  workspaceId    String       @map("workspace_id")
+  teamId         String?      @map("team_id")
+  ownerId        String       @map("owner_id")
+  documentId     String?      @map("document_id")
+  title          String
+  slug           String?
+  description    String?
+  category       String?
+  label          String?
+  kind           String       @default("knowledge_base")
+  status         String       @default("active")
+  url            String?
+  metadata       Json?
+  archivedAt     DateTime?    @map("archived_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  owner          User         @relation("ResourceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  document       Document?    @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  attachments    Attachment[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, category, archivedAt])
+  @@map("resources")
+}
+
+model Attachment {
+  id             String      @id @default(uuid())
+  workspaceId     String     @map("workspace_id")
+  ownerId         String     @map("owner_id")
+  messageId       String?    @map("message_id")
+  taskId          String?    @map("task_id")
+  documentId      String?    @map("document_id")
+  resourceId      String?    @map("resource_id")
+  name            String
+  contentType     String?    @map("content_type")
+  storageKey      String?    @map("storage_key")
+  status          String
+  sizeBytes       BigInt     @default(0) @map("size_bytes")
+  metadata        Json?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner           User       @relation("AttachmentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  message         Message?   @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  task            Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  document        Document?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  resource        Resource?  @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  voicemail       Voicemail?
+
+  @@index([workspaceId, status, createdAt])
+  @@index([storageKey])
+  @@map("attachments")
+}
+
+model CallRecord {
+  id                String          @id @default(uuid())
+  workspaceId        String         @map("workspace_id")
+  conversationId     String?        @map("conversation_id")
+  meetingId          String?        @map("meeting_id")
+  sessionId          String?        @map("session_id")
+  initiatorId        String?        @map("initiator_id")
+  title              String?
+  provider           String?
+  direction          String         @default("outbound")
+  mode               String         @default("audio")
+  status             String         @default("completed")
+  providerCallId     String?        @map("provider_call_id")
+  startedAt          DateTime?      @map("started_at")
+  endedAt            DateTime?      @map("ended_at")
+  durationSeconds    Int            @default(0) @map("duration_seconds")
+  missed             Boolean        @default(false)
+  recordingAvailable Boolean        @default(false) @map("recording_available")
+  metadata           Json?
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation       Conversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  meeting            Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  session            MeetingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  initiator          User?          @relation("CallInitiator", fields: [initiatorId], references: [id], onDelete: SetNull)
+  voicemail          Voicemail?
+
+  @@index([workspaceId, startedAt])
+  @@index([conversationId, createdAt])
+  @@map("call_records")
+}
+
+model Voicemail {
+  id              String      @id @default(uuid())
+  workspaceId      String     @map("workspace_id")
+  callId           String     @unique @map("call_id")
+  ownerId          String?    @map("owner_id")
+  attachmentId     String?    @unique @map("attachment_id")
+  transcript       String?
+  durationSeconds  Int        @default(0) @map("duration_seconds")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  workspace        Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  call             CallRecord @relation(fields: [callId], references: [id], onDelete: Cascade)
+  owner            User?      @relation("VoicemailOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  attachment       Attachment? @relation(fields: [attachmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@map("voicemails")
+}
+
+model OutboxEvent {
+  id             String    @id @default(uuid())
+  eventType      String    @map("event_type")
+  aggregateType  String    @map("aggregate_type")
+  aggregateId    String    @map("aggregate_id")
+  workspaceId    String    @map("workspace_id")
+  payload        Json
+  attempts       Int       @default(0)
+  publishedAt    DateTime? @map("published_at")
+  lastError      String?   @map("last_error")
+  lockedAt       DateTime? @map("locked_at")
+  lockedBy       String?   @map("locked_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([publishedAt, createdAt])
+  @@index([eventType])
+  @@map("outbox_events")
 }

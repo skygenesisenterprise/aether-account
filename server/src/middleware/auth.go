@@ -1,94 +1,118 @@
 package middleware
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
-	"github.com/skygenesisenterprise/aether-account/server/src/services"
-
 	"github.com/gin-gonic/gin"
+	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-account/server/src/utils"
 )
 
-type AuthMiddleware struct {
-	jwtService *services.JWTService
-}
+type contextKey string
 
-func NewAuthMiddleware(jwt *services.JWTService) *AuthMiddleware {
-	return &AuthMiddleware{
-		jwtService: jwt,
-	}
-}
+const principalKey contextKey = "principal"
 
-func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "Authorization header required",
-			})
-			ctx.Abort()
+func Auth(provider interfaces.IdentityProvider) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") && websocketProtocolToken(c.GetHeader("Sec-WebSocket-Protocol")) == "" {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
 			return
 		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "Invalid authorization header format",
-			})
-			ctx.Abort()
-			return
-		}
-
-		claims, err := m.jwtService.ValidateToken(parts[1])
-		if err != nil {
-			tokenPreview := parts[1]
-			if len(tokenPreview) > 50 {
-				tokenPreview = tokenPreview[:50]
+		token := strings.TrimPrefix(header, "Bearer ")
+		if token == header {
+			token = websocketProtocolToken(c.GetHeader("Sec-WebSocket-Protocol"))
+			if token != "" {
+				c.Header("Sec-WebSocket-Protocol", "bearer")
 			}
-			fmt.Printf("[auth middleware] Token validation error: %v, token: %s...\n", err, tokenPreview)
-			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "Invalid or expired token",
-			})
-			ctx.Abort()
+		}
+		principal, err := provider.Authenticate(c.Request.Context(), token)
+		if err != nil {
+			utils.Error(c, err)
+			c.Abort()
 			return
 		}
-
-		ctx.Set("userID", claims.UserID)
-		ctx.Set("email", claims.Email)
-		ctx.Set("username", claims.Username)
-
-		ctx.Next()
+		c.Set(string(principalKey), *principal)
+		c.Next()
 	}
 }
 
-func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" {
-			ctx.Next()
+func websocketProtocolToken(header string) string {
+	if header == "" {
+		return ""
+	}
+
+	parts := strings.Split(header, ",")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	if strings.TrimSpace(parts[0]) != "bearer" {
+		return ""
+	}
+
+	token := strings.TrimSpace(parts[1])
+	if token == "" || strings.ContainsAny(token, " \t") {
+		return ""
+	}
+
+	return token
+}
+
+func GetPrincipal(c *gin.Context) (interfaces.Principal, bool) {
+	value, ok := c.Get(string(principalKey))
+	if !ok {
+		return interfaces.Principal{}, false
+	}
+	principal, ok := value.(interfaces.Principal)
+	return principal, ok
+}
+
+func PrincipalFromGin(c *gin.Context) (interfaces.Principal, bool) { return GetPrincipal(c) }
+
+func RequireAuth(provider interfaces.IdentityProvider) gin.HandlerFunc {
+	return Auth(provider)
+}
+
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		principal, ok := GetPrincipal(c)
+		if !ok {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
 			return
 		}
+		for _, current := range principal.Roles {
+			for _, allowed := range roles {
+				if current == allowed {
+					c.Next()
+					return
+				}
+			}
+		}
+		utils.Error(c, utils.ErrForbidden)
+		c.Abort()
+	}
+}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			ctx.Next()
+func RequirePermission(permissions ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		principal, ok := GetPrincipal(c)
+		if !ok {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
 			return
 		}
-
-		claims, err := m.jwtService.ValidateToken(parts[1])
-		if err != nil {
-			ctx.Next()
-			return
+		for _, current := range principal.Permissions {
+			for _, allowed := range permissions {
+				if current == allowed {
+					c.Next()
+					return
+				}
+			}
 		}
-
-		ctx.Set("userID", claims.UserID)
-		ctx.Set("email", claims.Email)
-		ctx.Set("username", claims.Username)
-
-		ctx.Next()
+		utils.Error(c, utils.ErrForbidden)
+		c.Abort()
 	}
 }
