@@ -4,8 +4,6 @@ import assert from "node:assert/strict";
 import { clearStoredTokens, configureAccessTokenProvider, getStoredAccessToken, setStoredAccessToken } from "../../lib/api/auth.ts";
 import { apiListRequest, apiRequest } from "../../lib/api/client.ts";
 import { ApiError } from "../../lib/api/errors.ts";
-import { createMeetingJoinToken } from "../../lib/api/meetings.ts";
-
 const originalFetch = globalThis.fetch;
 
 test.afterEach(() => {
@@ -203,31 +201,4 @@ test("apiRequest stops after a second 401 following refresh", async () => {
   assert.equal(protectedCalls, 2);
 });
 
-test("meeting join token rejects private signaling URLs in production", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
 
-  globalThis.fetch = async () =>
-    new Response(
-      JSON.stringify({
-        data: {
-          token: "token",
-          meetingId: "meeting-1",
-          sessionId: "session-1",
-          roomName: "room-1",
-          participantIdentity: "user-1",
-          signalingUrl: "ws://localhost:7880",
-          expiresAt: "2026-06-27T12:00:00Z",
-        },
-        meta: { requestId: "req-join" },
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-  await assert.rejects(() => createMeetingJoinToken("meeting-1"));
-
-  process.env.NODE_ENV = previousNodeEnv;
-});

@@ -6,8 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api/errors";
 import { getMe } from "@/lib/api/me";
-import { getSharedRealtimeClient } from "@/lib/api/realtime/client";
-import type { RealtimeEvent } from "@/lib/api/realtime/events";
 import type { User, Workspace } from "@/lib/api/types";
 import { resolveUserPresenceStatus } from "@/lib/presence";
 import { listWorkspaces } from "@/lib/api/workspaces";
@@ -23,8 +21,6 @@ interface PlatformContextValue {
   setCurrentUser(user: User | null): void;
   isLoading: boolean;
   error: ApiError | null;
-  isRealtimeConnected: boolean;
-  lastRealtimeEvent: RealtimeEvent | null;
 }
 
 const PlatformContext = React.createContext<PlatformContextValue | undefined>(undefined);
@@ -78,8 +74,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   const [activeWorkspaceId, setActiveWorkspaceIdState] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<ApiError | null>(null);
-  const [isRealtimeConnected, setIsRealtimeConnected] = React.useState(false);
-  const [lastRealtimeEvent, setLastRealtimeEvent] = React.useState<RealtimeEvent | null>(null);
   const { hasActiveSession, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const hasLoadedRef = React.useRef(false);
   const pathnameRef = React.useRef(pathname);
@@ -95,7 +89,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       writeStoredWorkspaceId(workspaceId);
       setActiveWorkspaceIdState(workspaceId);
       replaceWorkspaceParam(router, pathname, searchParams, workspaceId);
-      getSharedRealtimeClient().setWorkspace(workspaceId);
     },
     [pathname, router, searchParams]
   );
@@ -178,38 +171,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     };
   }, [workspaceIdFromQuery, isAuthLoading, isAuthenticated]);
 
-  React.useEffect(() => {
-    if (!activeWorkspaceId) {
-      return;
-    }
-
-    const realtime = getSharedRealtimeClient();
-    realtime.setWorkspace(activeWorkspaceId);
-
-    const unsubConnection = realtime.onConnectionChange(setIsRealtimeConnected);
-    setIsRealtimeConnected(realtime.isConnected);
-    void realtime.connect().then(
-      () => setIsRealtimeConnected(true),
-      () => setIsRealtimeConnected(false)
-    );
-
-    const subscription = realtime.subscribe((event) => {
-      setLastRealtimeEvent(event);
-    });
-
-    const handlePageHide = () => {
-      realtime.disconnect();
-    };
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      subscription.unsubscribe();
-      unsubConnection();
-      window.removeEventListener("pagehide", handlePageHide);
-      setIsRealtimeConnected(false);
-    };
-  }, [activeWorkspaceId]);
-
   const resolvedCurrentUser = React.useMemo(() => {
     if (!currentUser) {
       return null;
@@ -219,11 +180,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       ...currentUser,
       presenceStatus: resolveUserPresenceStatus(currentUser, {
         isAuthenticated: hasActiveSession && isAuthenticated,
-        isRealtimeConnected,
+        isRealtimeConnected: true,
         isCurrentSession: true,
       }),
     };
-  }, [currentUser, hasActiveSession, isAuthenticated, isRealtimeConnected]);
+  }, [currentUser, hasActiveSession, isAuthenticated]);
 
   const value = React.useMemo<PlatformContextValue>(
     () => ({
@@ -235,10 +196,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser,
       isLoading,
       error,
-      isRealtimeConnected,
-      lastRealtimeEvent,
     }),
-    [activeWorkspaceId, error, isLoading, isRealtimeConnected, lastRealtimeEvent, resolvedCurrentUser, setActiveWorkspaceId, setCurrentUser, workspaces]
+    [activeWorkspaceId, error, isLoading, resolvedCurrentUser, setActiveWorkspaceId, setCurrentUser, workspaces]
   );
 
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;

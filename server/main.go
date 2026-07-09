@@ -17,18 +17,13 @@ import (
 	"github.com/skygenesisenterprise/aether-account/server/src/middleware"
 	"github.com/skygenesisenterprise/aether-account/server/src/routes"
 	"github.com/skygenesisenterprise/aether-account/server/src/services"
-	"golang.org/x/sync/errgroup"
 )
 
 type runtimeMode string
 
 const (
-	modeAPI       runtimeMode = "api"
-	modeWorker    runtimeMode = "worker"
-	modeScheduler runtimeMode = "scheduler"
-	modeWebRTC    runtimeMode = "webrtc"
-	modeAll       runtimeMode = "all"
-	modeServer    runtimeMode = "server"
+	modeAPI    runtimeMode = "api"
+	modeServer runtimeMode = "server"
 )
 
 func connectDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (*services.DatabaseService, error) {
@@ -57,11 +52,8 @@ func parseRuntimeMode(args []string) (runtimeMode, error) {
 	if len(args) == 0 {
 		return modeAPI, nil
 	}
-
 	switch runtimeMode(args[0]) {
-	case modeAPI, modeWorker, modeScheduler, modeWebRTC, modeAll:
-		return runtimeMode(args[0]), nil
-	case modeServer:
+	case modeAPI, modeServer:
 		return modeAPI, nil
 	default:
 		return "", fmt.Errorf("unknown mode %q", args[0])
@@ -144,46 +136,17 @@ func main() {
 	}()
 
 	repos := services.NewRepositories(db.Gorm())
-	metrics := &services.WorkerMetrics{}
-	webrtcMetrics := &services.WebRTCMetrics{}
-	queue := services.NewJobQueue(logger, cfg, redis, metrics)
-	producer := services.NewQueueProducer(logger, queue, cfg.Worker.MaxAttempts, metrics)
-	outboxService := services.NewOutboxService(logger, cfg.Outbox, repos.OutboxEvents(), producer)
 	identityProvider := services.NewIdentityProvider(cfg.Auth, repos)
 	authLimiter := services.NewAuthRateLimiter(redis)
 	eventBus := services.NewEventBus(cfg, redis)
 	defer eventBus.Close()
-	presence := services.NewPresenceService(logger, redis, eventBus, repos.Users(), cfg.Realtime.ClientTimeout)
+	presence := services.NewPresenceService(logger, redis, eventBus, repos.Users(), 75*time.Second)
 	defer presence.Close()
-	_, err = services.NewObjectStorage(cfg.Storage)
-	if err != nil {
-		logger.Error("storage initialization failed", "error", err)
-		os.Exit(1)
-	}
 
 	userService := services.NewUserService(repos.Users(), repos.UserSettings(), repos.NotificationPreferences(), presence)
-	workspaceService := services.NewWorkspaceService(db, cfg.Auth, repos.Users(), repos, repos.AuditLogs(), outboxService, presence)
-	authService := services.NewAuthService(cfg.Auth, db, repos, identityProvider, outboxService, authLimiter, workspaceService)
-	teamService := services.NewTeamService(repos.Teams(), workspaceService)
-	projectService := services.NewProjectService(repos.Projects(), repos.Users(), workspaceService)
-	taskService := services.NewTaskService(repos.Tasks(), repos.Users(), workspaceService)
-	conversationService := services.NewConversationService(repos.Conversations(), repos.ConversationMembers(), workspaceService, eventBus)
-	channelService := services.NewChannelService(db, repos, workspaceService, repos.Conversations())
-	messageService := services.NewMessageService(db, repos, conversationService, workspaceService, eventBus, outboxService)
-	webrtcProvider := services.NewWebRTCProvider(cfg)
-	nodeSelector := services.NewNodeSelector(repos.WebRTCNodes(), cfg)
-	webrtcService := services.NewWebRTCService(logger, cfg, db, repos, workspaceService, webrtcProvider, nodeSelector, outboxService, producer, eventBus, webrtcMetrics)
-	meetingService := services.NewMeetingService(db, repos.Meetings(), repos.MeetingParticipants(), workspaceService, webrtcService, outboxService, producer)
-	integrationService := services.NewIntegrationService(repos.Integrations(), workspaceService, eventBus, repos.Messages(), producer)
-	auditService := services.NewAuditService(repos.AuditLogs(), workspaceService)
-	notificationService := services.NewNotificationService(repos.Notifications(), eventBus)
-	registry := services.NewJobRegistry()
-	notificationHandlers := services.NewNotificationHandlers(eventBus, repos.Messages(), repos.ConversationMembers(), notificationService, repos.WorkspaceMembers())
-	services.RegisterWorkerHandlers(registry, notificationHandlers, presence, integrationService, meetingService, authService)
-	scheduler := services.NewScheduler(redis, producer)
-	worker := services.NewWorker(logger, cfg, redis, queue, producer, registry, outboxService, scheduler, presence, integrationService, meetingService, metrics)
-	hub := services.NewHub(ctx, logger, cfg.Realtime, cfg.CORS.AllowedOrigins, eventBus, presence, workspaceService, conversationService)
-	defer hub.Close()
+	workspaceService := services.NewWorkspaceService(db, cfg.Auth, repos.Users(), repos)
+	authService := services.NewAuthService(cfg.Auth, db, repos, identityProvider, authLimiter, workspaceService)
+	oauthService := services.NewOAuthService(cfg.OAuth, repos, authService, identityProvider, workspaceService, nil)
 
 	mode, err := parseRuntimeMode(os.Args[1:])
 	if err != nil {
@@ -200,48 +163,21 @@ func main() {
 		_ = router.SetTrustedProxies(cfg.App.TrustedProxies)
 	}
 	routes.SetupRoutes(router, routes.Dependencies{
-		Config: cfg, Logger: logger, Database: db, Redis: redis, EventBus: eventBus,
-		IdentityProvider: identityProvider, AuthService: authService, Hub: hub, UserService: userService, NotificationService: notificationService, ProjectService: projectService, TaskService: taskService,
-		WorkspaceService: workspaceService, TeamService: teamService, ChannelService: channelService,
-		ConversationService: conversationService, MessageService: messageService,
-		MeetingService: meetingService, WebRTCService: webrtcService, IntegrationService: integrationService, AuditService: auditService, WebRTCMetrics: webrtcMetrics,
-		RuntimeRole: string(mode),
+		Config:           cfg,
+		Logger:           logger,
+		Database:         db,
+		Redis:            redis,
+		EventBus:         eventBus,
+		IdentityProvider: identityProvider,
+		AuthService:      authService,
+		OAuthService:     oauthService,
+		UserService:      userService,
+		WorkspaceService: workspaceService,
+		RuntimeRole:      string(mode),
 	})
 
-	switch mode {
-	case modeAPI:
-		if err := runHTTPServer(ctx, logger, cfg, router, mode); err != nil {
-			logger.Error("server stopped unexpectedly", "error", err)
-			os.Exit(1)
-		}
-	case modeWorker:
-		if err := worker.RunConsumers(ctx); err != nil {
-			logger.Error("worker stopped with error", "error", err)
-			os.Exit(1)
-		}
-	case modeScheduler:
-		if err := worker.RunScheduler(ctx); err != nil {
-			logger.Error("scheduler stopped with error", "error", err)
-			os.Exit(1)
-		}
-	case modeAll:
-		group, groupCtx := errgroup.WithContext(ctx)
-		group.Go(func() error { return runHTTPServer(groupCtx, logger, cfg, router, mode) })
-		group.Go(func() error { return worker.RunAll(groupCtx) })
-		if err := group.Wait(); err != nil {
-			logger.Error("runtime stopped with error", "mode", string(mode), "error", err)
-			os.Exit(1)
-		}
-	case modeWebRTC:
-		group, groupCtx := errgroup.WithContext(ctx)
-		group.Go(func() error { return runHTTPServer(groupCtx, logger, cfg, router, mode) })
-		group.Go(func() error { return webrtcService.Run(groupCtx) })
-		if err := group.Wait(); err != nil {
-			logger.Error("runtime stopped with error", "mode", string(mode), "error", err)
-			os.Exit(1)
-		}
-	default:
-		logger.Error("unknown mode", "mode", string(mode))
+	if err := runHTTPServer(ctx, logger, cfg, router, mode); err != nil {
+		logger.Error("server stopped unexpectedly", "error", err)
 		os.Exit(1)
 	}
 }

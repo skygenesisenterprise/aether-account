@@ -61,6 +61,7 @@ services:
       HOST: ${DOMAIN_HOST:-localhost}
       FRONTEND_PORT: "3000"
       API_PORT: "8080"
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-.skygenesisenterprise.com}
 
       POSTGRESQL__HOST: postgresql
       POSTGRESQL__PORT: "5432"
@@ -76,7 +77,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis-default-password}
       REDIS_DB: "0"
       REDIS_URL: redis://default:${REDIS_PASSWORD:-redis-default-password}@redis:6379/0
-      REDIS_KEY_PREFIX: aether-meet:v1
+      REDIS_KEY_PREFIX: aether-account:v1
       REDIS_DEFAULT_TTL: "300"
 
     depends_on:

@@ -2,12 +2,33 @@
 
 import { useId, useState } from 'react'
 import { Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { authApi } from '@/lib/api/auth'
+import { loginSchema, registerSchema } from '@/lib/auth/schemas'
+import { useRouter } from 'next/navigation'
+import { toast } from '@/components/ui/use-toast'
 
 type Mode = 'login' | 'register'
 
+// Types pour les formulaires
+interface LoginFormData {
+  email: string
+  password: string
+}
+
+interface RegisterFormData {
+  displayName: string
+  email: string
+  password: string
+  confirmPassword: string
+  workspaceName?: string
+}
+
 export function AuthForm() {
+  const router = useRouter()
   const [mode, setMode] = useState<Mode>('login')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -15,14 +36,88 @@ export function AuthForm() {
   const nameId = useId()
   const emailId = useId()
   const passwordId = useId()
+  const confirmPasswordId = useId()
 
   const isRegister = mode === 'register'
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  // Initialisation des formulaires avec react-hook-form et zod
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  })
+
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      displayName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      workspaceName: '',
+    },
+  })
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
-    // Simulated request — wire this up to your auth backend.
-    setTimeout(() => setSubmitting(false), 1400)
+
+    try {
+      if (isRegister) {
+        // Soumission du formulaire d'inscription
+        const formData = registerForm.getValues()
+        
+        // Préparer le payload pour l'API
+        const payload = {
+          displayName: formData.displayName,
+          email: formData.email,
+          password: formData.password,
+          workspaceName: formData.workspaceName || undefined,
+        }
+
+        const response = await authApi.register(payload)
+        
+        if (response) {
+          toast({
+            title: 'Account created',
+            description: 'Your account has been created successfully.',
+            variant: 'default',
+          })
+          router.push('/home')
+        }
+      } else {
+        // Soumission du formulaire de connexion
+        const formData = loginForm.getValues()
+        
+        const payload = {
+          email: formData.email,
+          password: formData.password,
+        }
+
+        const response = await authApi.login(payload)
+        
+        if (response) {
+          toast({
+            title: 'Welcome back',
+            description: 'You have been logged in successfully.',
+            variant: 'default',
+          })
+          router.push('/home')
+        }
+      }
+    } catch (error) {
+      // Gestion des erreurs
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -87,6 +182,8 @@ export function AuthForm() {
             autoComplete="name"
             placeholder="Ada Lovelace"
             required
+            {...registerForm.register('displayName')}
+            error={registerForm.formState.errors.displayName?.message}
           />
         )}
 
@@ -96,8 +193,10 @@ export function AuthForm() {
           icon={<Mail className="size-4" />}
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="john.doe@company.com"
           required
+          {...(isRegister ? registerForm.register('email') : loginForm.register('email'))}
+          error={isRegister ? registerForm.formState.errors.email?.message : loginForm.formState.errors.email?.message}
         />
 
         <div>
@@ -128,6 +227,7 @@ export function AuthForm() {
               placeholder="••••••••"
               required
               className="h-11 w-full rounded-lg border border-input bg-card pl-9 pr-10 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
+              {...(isRegister ? registerForm.register('password') : loginForm.register('password'))}
             />
             <button
               type="button"
@@ -144,10 +244,37 @@ export function AuthForm() {
           </div>
           {isRegister && (
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Must be at least 8 characters.
+              Must be at least 12 characters.
             </p>
           )}
+          {isRegister ? (
+            registerForm.formState.errors.password && (
+              <p className="mt-1 text-xs text-destructive">
+                {registerForm.formState.errors.password.message}
+              </p>
+            )
+          ) : (
+            loginForm.formState.errors.password && (
+              <p className="mt-1 text-xs text-destructive">
+                {loginForm.formState.errors.password.message}
+              </p>
+            )
+          )}
         </div>
+
+        {isRegister && (
+          <Field
+            id={confirmPasswordId}
+            label="Confirm password"
+            icon={<Lock className="size-4" />}
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="••••••••"
+            required
+            {...registerForm.register('confirmPassword')}
+            error={registerForm.formState.errors.confirmPassword?.message}
+          />
+        )}
 
         {isRegister && (
           <label className="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -199,11 +326,13 @@ function Field({
   id,
   label,
   icon,
+  error,
   ...props
 }: {
   id: string
   label: string
   icon: React.ReactNode
+  error?: string
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
@@ -223,6 +352,9 @@ function Field({
           {...props}
         />
       </div>
+      {error && (
+        <p className="mt-1 text-xs text-destructive">{error}</p>
+      )}
     </div>
   )
 }

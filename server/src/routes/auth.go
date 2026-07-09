@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/skygenesisenterprise/aether-account/server/src/services"
@@ -190,6 +191,102 @@ func (h *apiHandler) verifyEmail(c *gin.Context) {
 
 func (h *apiHandler) resendVerification(c *gin.Context) {
 	utils.Success(c, http.StatusAccepted, gin.H{"accepted": true})
+}
+
+func (h *apiHandler) oauthLogin(c *gin.Context) {
+	provider := c.Param("provider")
+	if h.deps.OAuthService == nil {
+		utils.Error(c, utils.ErrDependencyUnavailable)
+		return
+	}
+	action := c.DefaultQuery("action", "login")
+	var userID string
+	if action == "link" {
+		p, ok := h.principal(c)
+		if !ok {
+			utils.Error(c, utils.ErrUnauthorized)
+			return
+		}
+		userID = p.UserID
+	}
+	authURL, err := h.deps.OAuthService.GetAuthorizationURL(c.Request.Context(), provider, action, userID)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+	utils.Success(c, http.StatusOK, gin.H{"url": authURL})
+}
+
+func (h *apiHandler) oauthCallback(c *gin.Context) {
+	provider := c.Param("provider")
+	if h.deps.OAuthService == nil {
+		utils.Error(c, utils.ErrDependencyUnavailable)
+		return
+	}
+	code := c.Query("code")
+	state := c.Query("state")
+	if code == "" || state == "" {
+		utils.Error(c, utils.ErrValidationFailed)
+		return
+	}
+	result, err := h.deps.OAuthService.HandleCallback(c.Request.Context(), provider, code, state, requestMetadata(c))
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+	h.deps.OAuthService.SetOAuthCookies(c, result)
+	utils.Success(c, http.StatusOK, result)
+}
+
+func (h *apiHandler) listOAuthAccounts(c *gin.Context) {
+	p, ok := h.principal(c)
+	if !ok {
+		utils.Error(c, utils.ErrUnauthorized)
+		return
+	}
+	if h.deps.OAuthService == nil {
+		utils.Error(c, utils.ErrDependencyUnavailable)
+		return
+	}
+	accounts, err := h.deps.OAuthService.ListLinkedAccounts(c.Request.Context(), p.UserID)
+	if err != nil {
+		utils.Error(c, err)
+		return
+	}
+	type accountDTO struct {
+		Provider          string  `json:"provider"`
+		ProviderAccountID string  `json:"providerAccountId"`
+		Scopes            *string `json:"scopes,omitempty"`
+		CreatedAt         string  `json:"createdAt"`
+	}
+	dtos := make([]accountDTO, 0, len(accounts))
+	for _, a := range accounts {
+		dtos = append(dtos, accountDTO{
+			Provider:          a.Provider,
+			ProviderAccountID: a.ProviderAccountID,
+			Scopes:            a.Scopes,
+			CreatedAt:         a.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	utils.Success(c, http.StatusOK, gin.H{"accounts": dtos})
+}
+
+func (h *apiHandler) unlinkOAuthAccount(c *gin.Context) {
+	provider := c.Param("provider")
+	p, ok := h.principal(c)
+	if !ok {
+		utils.Error(c, utils.ErrUnauthorized)
+		return
+	}
+	if h.deps.OAuthService == nil {
+		utils.Error(c, utils.ErrDependencyUnavailable)
+		return
+	}
+	if err := h.deps.OAuthService.UnlinkAccount(c.Request.Context(), p.UserID, provider); err != nil {
+		utils.Error(c, err)
+		return
+	}
+	utils.Success(c, http.StatusOK, gin.H{"unlinked": true})
 }
 
 func requestMetadata(c *gin.Context) services.RequestMetadata {

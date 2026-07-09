@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { DEFAULT_PLATFORM_ROUTE, LOGIN_ROUTE } from "@/lib/routes";
 
-const REFRESH_COOKIE_NAME = process.env.AUTH_REFRESH_COOKIE_NAME ?? "aether_meet_refresh";
+const REFRESH_COOKIE_NAME = process.env.AUTH_REFRESH_COOKIE_NAME ?? "aether_account_refresh";
 
 export default async function HomePage() {
   const cookieStore = await cookies();

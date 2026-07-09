@@ -14,10 +14,6 @@ func TestParseRuntimeMode(t *testing.T) {
 		{name: "default to api", args: nil, want: modeAPI},
 		{name: "api", args: []string{"api"}, want: modeAPI},
 		{name: "server alias", args: []string{"server"}, want: modeAPI},
-		{name: "worker", args: []string{"worker"}, want: modeWorker},
-		{name: "scheduler", args: []string{"scheduler"}, want: modeScheduler},
-		{name: "all", args: []string{"all"}, want: modeAll},
-		{name: "webrtc", args: []string{"webrtc"}, want: modeWebRTC},
 		{name: "invalid", args: []string{"invalid"}, wantErr: true},
 	}
 

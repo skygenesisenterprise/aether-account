@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -30,7 +29,6 @@ type AuthService struct {
 	identity     interfaces.IdentityProvider
 	hasher       *PasswordHasher
 	limiter      *AuthRateLimiter
-	outbox       *OutboxService
 	workspaceSvc *WorkspaceService
 }
 
@@ -66,7 +64,7 @@ type AuthSessionDTO struct {
 	Current    bool   `json:"current"`
 }
 
-func NewAuthService(cfg config.AuthConfig, db interfaces.Database, repos *Repositories, identity interfaces.IdentityProvider, outbox *OutboxService, limiter *AuthRateLimiter, workspaceSvc *WorkspaceService) *AuthService {
+func NewAuthService(cfg config.AuthConfig, db interfaces.Database, repos *Repositories, identity interfaces.IdentityProvider, limiter *AuthRateLimiter, workspaceSvc *WorkspaceService) *AuthService {
 	return &AuthService{
 		cfg:          cfg,
 		db:           db,
@@ -74,7 +72,6 @@ func NewAuthService(cfg config.AuthConfig, db interfaces.Database, repos *Reposi
 		identity:     identity,
 		hasher:       NewPasswordHasher(cfg),
 		limiter:      limiter,
-		outbox:       outbox,
 		workspaceSvc: workspaceSvc,
 	}
 }
@@ -151,14 +148,6 @@ func (s *AuthService) Register(ctx context.Context, req RegisterInput, meta Requ
 			return err
 		}
 		workspaceID = workspace.ID
-		if s.outbox != nil {
-			if err := s.outbox.Add(ctx, txRepos.OutboxEvents(), "auth.email_verification.requested", "user", userID, workspaceID, map[string]any{"userId": userID}); err != nil {
-				return err
-			}
-			if err := s.outbox.Add(ctx, txRepos.OutboxEvents(), "auth.audit.persist", "user", userID, workspaceID, map[string]any{"eventType": "auth.registered", "userId": userID}); err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 	if err != nil {
@@ -454,18 +443,6 @@ func (s *AuthService) ChangePassword(
 		if err := txRepos.Users().Update(ctx, user); err != nil {
 			return err
 		}
-		if s.outbox != nil {
-			payload, _ := json.Marshal(map[string]any{"eventType": "auth.password.changed", "userId": user.ID})
-			return txRepos.AuthAuditEvents().Create(ctx, &models.AuthAuditEvent{
-				Common:    models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
-				UserID:    &user.ID,
-				SessionID: stringPtr(principal.SessionID),
-				EventType: "auth.password.changed",
-				IPAddress: stringPtr(meta.IPAddress),
-				UserAgent: stringPtr(meta.UserAgent),
-				Metadata:  payload,
-			})
-		}
 		return nil
 	})
 }
@@ -495,9 +472,6 @@ func (s *AuthService) RequestPasswordReset(ctx context.Context, email string) er
 	}
 	if err := s.repos.PasswordResetTokens().Create(ctx, model); err != nil {
 		return err
-	}
-	if s.outbox != nil {
-		return s.outbox.Add(ctx, nil, "auth.password_reset.requested", "user", user.ID, "", map[string]any{"userId": user.ID, "tokenId": model.ID})
 	}
 	return nil
 }
@@ -569,20 +543,6 @@ func (s *AuthService) createAuthenticatedSession(ctx context.Context, user *mode
 		}
 		if err := txRepos.AuthRefreshTokens().Create(ctx, refreshRecord); err != nil {
 			return err
-		}
-		if s.outbox != nil {
-			payload, _ := json.Marshal(map[string]any{"eventType": "auth.login.succeeded", "userId": user.ID, "sessionId": session.ID})
-			if err := txRepos.AuthAuditEvents().Create(ctx, &models.AuthAuditEvent{
-				Common:    models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
-				UserID:    &user.ID,
-				SessionID: &session.ID,
-				EventType: "auth.login.succeeded",
-				IPAddress: stringPtr(meta.IPAddress),
-				UserAgent: stringPtr(meta.UserAgent),
-				Metadata:  payload,
-			}); err != nil {
-				return err
-			}
 		}
 		return nil
 	}); err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -45,9 +44,7 @@ func TestHealthRoutes(t *testing.T) {
 	router := gin.New()
 	SetupRoutes(router, Dependencies{
 		Config: config.Config{
-			App:      config.AppConfig{Version: "test"},
-			Realtime: config.RealtimeConfig{Enabled: false},
-			Worker:   config.WorkerConfig{Enabled: false},
+			App: config.AppConfig{Version: "test"},
 		},
 		Database:    databaseStub{},
 		EventBus:    eventBusStub{},
@@ -66,80 +63,42 @@ func TestHealthRoutes(t *testing.T) {
 	}
 }
 
-func TestJoinTokenRouteRequiresAuthentication(t *testing.T) {
+func TestProtectedRoutesRequireAuthentication(t *testing.T) {
 	t.Parallel()
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	SetupRoutes(router, Dependencies{
 		Config: config.Config{
-			App:      config.AppConfig{Version: "test"},
-			Realtime: config.RealtimeConfig{Enabled: false},
-			Worker:   config.WorkerConfig{Enabled: false},
-		},
-		Database:         databaseStub{},
-		EventBus:         eventBusStub{},
-		IdentityProvider: identityProviderStub{},
-		RuntimeRole:      "api",
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/meetings/meeting-1/join-token", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", rec.Code)
-	}
-}
-
-func TestRoadmapRoutesRegistered(t *testing.T) {
-	t.Parallel()
-
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	SetupRoutes(router, Dependencies{
-		Config: config.Config{
-			App:      config.AppConfig{Version: "test"},
-			Realtime: config.RealtimeConfig{Enabled: false},
-			Worker:   config.WorkerConfig{Enabled: false},
+			App: config.AppConfig{Version: "test"},
 		},
 		Database:    databaseStub{},
 		EventBus:    eventBusStub{},
 		RuntimeRole: "api",
 	})
 
-	required := []string{
-		"GET /api/v1/notifications",
-		"GET /api/v1/notifications/unread-count",
-		"POST /api/v1/notifications/:notificationId/read",
-		"GET /api/v1/me/notification-preferences",
-		"PATCH /api/v1/me/preferences",
-		"POST /api/v1/workspaces/:workspaceId/members/provision",
-		"GET /api/v1/workspaces/:workspaceId/sso",
-		"PATCH /api/v1/workspaces/:workspaceId/sso",
-		"GET /api/v1/workspaces/:workspaceId/contacts",
-		"GET /api/v1/workspaces/:workspaceId/tasks",
-		"GET /api/v1/workspaces/:workspaceId/projects",
-		"POST /api/v1/workspaces/:workspaceId/files/uploads",
-		"GET /api/v1/workspaces/:workspaceId/documents",
-		"GET /api/v1/workspaces/:workspaceId/resources",
-		"GET /api/v1/workspaces/:workspaceId/calls/history",
-		"POST /api/v1/meetings/:meetingId/cancel",
+	protected := []string{
+		"/api/v1/platform/home",
+		"/api/v1/platform/wallet",
+		"/api/v1/platform/user-info",
+		"/api/v1/platform/security",
+		"/api/v1/platform/applications",
+		"/api/v1/platform/data-privacy",
+		"/api/v1/platform/contacts",
+		"/api/v1/platform/family",
+		"/api/v1/platform/storage",
+		"/api/v1/platform/settings",
+		"/api/v1/workspaces",
 	}
 
-	registered := make(map[string]struct{}, len(router.Routes()))
-	for _, route := range router.Routes() {
-		registered[route.Method+" "+route.Path] = struct{}{}
-	}
+	for _, target := range protected {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		rec := httptest.NewRecorder()
 
-	var missing []string
-	for _, route := range required {
-		if _, ok := registered[route]; !ok {
-			missing = append(missing, route)
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("%s expected 401, got %d", target, rec.Code)
 		}
-	}
-
-	if len(missing) > 0 {
-		t.Fatalf("missing routes: %s", strings.Join(missing, ", "))
 	}
 }

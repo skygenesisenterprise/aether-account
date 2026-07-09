@@ -235,3 +235,204 @@ func defaultString(value string, fallback string) string {
 func roleAllowed(role string) bool {
 	return utils.ValidRole(role)
 }
+
+// UpdateProfileInput représente les données pour mettre à jour le profil utilisateur
+type UpdateProfileInput struct {
+	DisplayName string
+	AvatarURL  string
+}
+
+// UpdateProfile met à jour le profil utilisateur
+func (s *UserService) UpdateProfile(ctx context.Context, userID string, input UpdateProfileInput) (*models.User, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.DisplayName != "" {
+		user.DisplayName = strings.TrimSpace(input.DisplayName)
+	}
+	if input.AvatarURL != "" {
+		user.AvatarURL = &input.AvatarURL
+	}
+
+	user.UpdatedAt = time.Now().UTC()
+
+	if err := s.users.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// GetByID retourne un utilisateur par son ID
+func (s *UserService) GetByID(ctx context.Context, userID string) (*models.User, error) {
+	return s.users.GetByID(ctx, userID)
+}
+
+// ListContacts liste les contacts de l'utilisateur
+func (s *UserService) ListContacts(ctx context.Context, userID string) ([]*models.Contact, error) {
+	// À implémenter avec le repository des contacts
+	// Pour l'instant, retourner une liste vide
+	return []*models.Contact{}, nil
+}
+
+// GetContactByID retourne un contact par son ID
+func (s *UserService) GetContactByID(ctx context.Context, userID, contactID string) (*models.Contact, error) {
+	// À implémenter avec le repository des contacts
+	return nil, utils.NewError(404, "CONTACT_NOT_FOUND", "The requested contact was not found.", nil)
+}
+
+// ListFamilyMembers liste les membres de la famille
+func (s *UserService) ListFamilyMembers(ctx context.Context, userID string) ([]*models.FamilyMember, error) {
+	// À implémenter avec le repository de la famille
+	return []*models.FamilyMember{}, nil
+}
+
+// InviteFamilyMemberInput représente les données pour inviter un membre de la famille
+type InviteFamilyMemberInput struct {
+	Email    string
+	Role     string
+	Message  string
+}
+
+// InviteFamilyMember invite un membre de la famille
+func (s *UserService) InviteFamilyMember(ctx context.Context, userID string, input InviteFamilyMemberInput) (*models.Invitation, error) {
+	// À implémenter avec le service d'invitation
+	// Pour l'instant, retourner une invitation de base
+	now := time.Now().UTC()
+	return &models.Invitation{
+		Common:    models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
+		Email:     input.Email,
+		Role:      input.Role,
+		Message:   input.Message,
+		Token:     utils.NewID(),
+		Status:    "pending",
+		ExpiresAt: now.Add(7 * 24 * time.Hour).UTC(),
+	}, nil
+}
+
+// GetStorageInfo retourne les informations de stockage
+func (s *UserService) GetStorageInfo(ctx context.Context, userID string) (*models.StorageInfo, error) {
+	// À implémenter avec le service de stockage
+	return &models.StorageInfo{
+		TotalSpace:     10 * 1024 * 1024 * 1024, // 10 GB
+		UsedSpace:      2 * 1024 * 1024 * 1024, // 2 GB
+		AvailableSpace: 8 * 1024 * 1024 * 1024, // 8 GB
+		UsagePercent:   20.0,
+		MaxFileSize:    512 * 1024 * 1024, // 512 MB
+		FileCount:      150,
+	}, nil
+}
+
+// ListFiles liste les fichiers de l'utilisateur
+func (s *UserService) ListFiles(ctx context.Context, userID string, page, pageSize int) ([]*models.FileItem, int, error) {
+	// À implémenter avec le repository des fichiers
+	return []*models.FileItem{}, 0, nil
+}
+
+// UpdateSettingsInput représente les données pour mettre à jour les paramètres utilisateur
+type UpdateSettingsInput struct {
+	Theme                  string
+	Language               string
+	Timezone               string
+	NotificationPreferences NotificationPreferencesDTO
+}
+
+// UpdateSettings met à jour les paramètres utilisateur
+func (s *UserService) UpdateSettings(ctx context.Context, userID string, input UpdateSettingsInput) (*models.UserSettings, error) {
+	settings, err := s.settings.GetByUserID(ctx, userID)
+	if err != nil {
+		if utils.AsAppError(err).Code != "USER_SETTINGS_NOT_FOUND" {
+			return nil, err
+		}
+		settings = &models.UserSettings{}
+	}
+
+	if input.Theme != "" {
+		settings.Theme = input.Theme
+	}
+	if input.Language != "" {
+		settings.Language = input.Language
+	}
+	if input.Timezone != "" {
+		settings.TimeZone = input.Timezone
+	}
+
+	settings.UpdatedAt = time.Now().UTC()
+
+	if err := s.settings.Upsert(ctx, settings); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
+}
+
+// GetSettings retourne les paramètres utilisateur
+func (s *UserService) GetSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	return s.settings.GetByUserID(ctx, userID)
+}
+
+// GetBillingInfo retourne les informations de facturation
+func (s *UserService) GetBillingInfo(ctx context.Context, userID string) (*models.BillingInfo, error) {
+	// À implémenter avec le service de facturation
+	return &models.BillingInfo{
+		Currency: "EUR",
+	}, nil
+}
+
+// GetSubscriptions retourne les abonnements de l'utilisateur
+func (s *UserService) GetSubscriptions(ctx context.Context, userID string) ([]*models.Subscription, error) {
+	// À implémenter avec le service de facturation
+	return []*models.Subscription{}, nil
+}
+
+// GetTransactions retourne l'historique des transactions
+func (s *UserService) GetTransactions(ctx context.Context, userID string, limit int) ([]*models.Transaction, error) {
+	// À implémenter avec le service de facturation
+	return []*models.Transaction{}, nil
+}
+
+// GetPrivacySettings retourne les paramètres de confidentialité
+func (s *UserService) GetPrivacySettings(ctx context.Context, userID string) (*models.PrivacySettings, error) {
+	// À implémenter avec le repository des paramètres de confidentialité
+	return &models.PrivacySettings{
+		Common:          models.Common{UpdatedAt: time.Now().UTC()},
+		DataProcessing:  true,
+		MarketingEmails: true,
+		Analytics:       true,
+		PublicProfile:   false,
+	}, nil
+}
+
+// UpdatePrivacySettingsInput représente les données pour mettre à jour les paramètres de confidentialité
+type UpdatePrivacySettingsInput struct {
+	DataProcessing  bool
+	MarketingEmails bool
+	Analytics      bool
+	PublicProfile  bool
+}
+
+// UpdatePrivacySettings met à jour les paramètres de confidentialité
+func (s *UserService) UpdatePrivacySettings(ctx context.Context, userID string, input UpdatePrivacySettingsInput) (*models.PrivacySettings, error) {
+	// À implémenter avec le repository des paramètres de confidentialité
+	return &models.PrivacySettings{
+		Common:          models.Common{UpdatedAt: time.Now().UTC()},
+		DataProcessing:  input.DataProcessing,
+		MarketingEmails: input.MarketingEmails,
+		Analytics:       input.Analytics,
+		PublicProfile:   input.PublicProfile,
+	}, nil
+}
+
+// GetPersonalDataSummary retourne un résumé des données personnelles
+func (s *UserService) GetPersonalDataSummary(ctx context.Context, userID string) (*models.PersonalDataSummary, error) {
+	// À implémenter
+	return &models.PersonalDataSummary{
+		TotalFiles:    0,
+		TotalMessages: 0,
+		TotalProjects: 0,
+		TotalContacts: 0,
+		TotalStorage:  0,
+	}, nil
+}

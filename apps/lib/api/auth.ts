@@ -9,9 +9,9 @@ import type { AuthSessionInfo, TokenResponse, User } from "@/lib/api/types";
 export { configureAccessTokenProvider, getAccessTokenProvider };
 export type { AccessTokenProvider };
 
-const ACCESS_TOKEN_KEY = "aether.auth.accessToken";
-const REFRESH_TOKEN_KEY = "aether.auth.refreshToken";
-const USER_KEY = "aether.auth.user";
+const ACCESS_TOKEN_KEY = "aether.account.accessToken";
+const REFRESH_TOKEN_KEY = "aether.account.refreshToken";
+const USER_KEY = "aether.account.user";
 let storageMigrated = false;
 let nativeStorageHydrated = false;
 let nativeStorageHydrationPromise: Promise<void> | null = null;

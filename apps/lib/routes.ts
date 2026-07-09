@@ -1,28 +1,25 @@
 export const LOGIN_ROUTE = "/login";
-export const REGISTER_ROUTE = "/register";
-export const DEFAULT_PLATFORM_ROUTE = "/chat";
+export const DEFAULT_PLATFORM_ROUTE = "/home";
 
 export const AUTH_ROUTES = [
   LOGIN_ROUTE,
-  REGISTER_ROUTE,
   "/forgot-password",
   "/reset-password",
-  "/verify-email",
 ] as const;
 
 export const PLATFORM_ROUTES = [
   "/contacts",
-  "/projects",
-  "/resources",
-  "/tasks",
-  "/calendar",
-  "/calls",
-  DEFAULT_PLATFORM_ROUTE,
+  "/data",
+  "/home",
+  "/password",
+  "/security",
+  "/user-info",
+  "/wallet",
   "/drive",
-  "/notifications",
+  "/familly",
   "/settings",
-  "/teams",
   "/applications",
+  DEFAULT_PLATFORM_ROUTE,
 ] as const;
 
 export function isExactRoute(pathname: string, route: string): boolean {
