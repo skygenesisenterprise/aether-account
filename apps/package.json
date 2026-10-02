@@ -92,7 +92,7 @@
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.4.0",
-    "@capacitor/ios": "^8.4.0",
+    "@capacitor/ios": "^8.5.2",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^26",
     "@types/react": "~19.1.10",
